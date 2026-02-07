@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useExpenseModal } from "@/context/ExpenseModalContext";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: HomeIcon },
@@ -12,13 +13,14 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { openAddModal } = useExpenseModal();
 
   return (
     <aside
       className="fixed left-0 top-0 z-30 hidden h-screen flex-col border-r border-white/10 bg-zinc-900/95 backdrop-blur-md md:flex"
       aria-label="Main navigation"
     >
-      <div className="flex w-16 flex-col gap-1 p-3 xl:w-56 xl:px-4 xl:py-5">
+      <div className="flex h-full w-16 flex-col gap-1 p-3 xl:w-56 xl:px-4 xl:py-5">
         {/* Logo / Brand - compact on small, full on large; links to dashboard (app home) */}
         <Link
           href="/dashboard"
@@ -54,8 +56,28 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        {/* Add transaction – bottom right of sidebar */}
+        <div className="mt-auto flex justify-end pb-2 xl:pb-3">
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 text-white transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-zinc-900 xl:h-11 xl:w-11"
+            aria-label="Add transaction"
+          >
+            <PlusIcon className="h-5 w-5 xl:h-6 xl:w-6" />
+          </button>
+        </div>
       </div>
     </aside>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+    </svg>
   );
 }
 

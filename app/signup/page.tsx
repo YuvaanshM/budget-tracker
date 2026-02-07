@@ -106,18 +106,18 @@ export default function SignUpPage() {
           </div>
           <div>
             <label htmlFor="password" className={labelClass}>
-              Password
+              Password (minimum 9 characters)
             </label>
             <input
               id="password"
               type="password"
               name="password"
               autoComplete="new-password"
-              placeholder="Choose a password (min 8 characters)"
+              placeholder="Choose a password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={9}
               className={inputClass}
             />
           </div>

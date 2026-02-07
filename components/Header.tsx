@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 
 /**
@@ -8,17 +9,27 @@ import { useRef, useState } from "react";
  * Add transaction is in the left sidebar. Hidden on mobile; FABMobile is shown as floating button.
  */
 export function Header() {
+  const pathname = usePathname();
+  const isDashboard = pathname === "/dashboard";
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
+  const headerClass = isDashboard
+    ? "hidden md:flex sticky top-0 z-10 h-14 items-center justify-end gap-1 border-b border-gray-200 bg-white/95 px-4 backdrop-blur-md"
+    : "hidden md:flex sticky top-0 z-10 h-14 items-center justify-end gap-1 border-b border-white/10 bg-zinc-950/80 px-4 backdrop-blur-md";
+
   return (
-    <header className="hidden md:flex sticky top-0 z-10 h-14 items-center justify-end gap-1 border-b border-white/10 bg-zinc-950/80 px-4 backdrop-blur-md">
+    <header className={headerClass}>
       {/* Notification button – budget alerts at 50%, 90%, 100% */}
       <div className="relative" ref={notifRef}>
         <button
           type="button"
           onClick={() => setNotificationsOpen((o) => !o)}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-white/20"
+          className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 ${
+            isDashboard
+              ? "text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300"
+              : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100 focus:ring-white/20"
+          }`}
           aria-label="Budget notifications"
           aria-expanded={notificationsOpen}
         >
@@ -31,11 +42,15 @@ export function Header() {
               aria-hidden
               onClick={() => setNotificationsOpen(false)}
             />
-            <div className="absolute right-0 top-full z-10 mt-1 w-72 rounded-xl border border-white/10 bg-zinc-900/95 py-2 shadow-xl backdrop-blur-md">
-              <p className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <div
+              className={`absolute right-0 top-full z-10 mt-1 w-72 rounded-xl py-2 shadow-xl backdrop-blur-md ${
+                isDashboard ? "border border-gray-200 bg-white/95" : "border border-white/10 bg-zinc-900/95"
+              }`}
+            >
+              <p className={`px-4 py-2 text-xs font-medium uppercase tracking-wider ${isDashboard ? "text-gray-500" : "text-zinc-500"}`}>
                 Budget alerts
               </p>
-              <ul className="text-sm text-zinc-300">
+              <ul className={`text-sm ${isDashboard ? "text-gray-600" : "text-zinc-300"}`}>
                 <li className="flex items-start gap-2 px-4 py-2">
                   <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
                   <span>50% — Half of your budget used</span>
@@ -49,7 +64,7 @@ export function Header() {
                   <span>100% — Budget limit reached</span>
                 </li>
               </ul>
-              <p className="border-t border-white/10 px-4 pt-2 text-xs text-zinc-500">
+              <p className={`border-t px-4 pt-2 text-xs ${isDashboard ? "border-gray-200 text-gray-500" : "border-white/10 text-zinc-500"}`}>
                 You’ll see alerts here when categories hit these levels.
               </p>
             </div>
@@ -60,7 +75,11 @@ export function Header() {
       {/* Help – link to description page */}
       <Link
         href="/help"
-        className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-white/20"
+        className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 ${
+          isDashboard
+            ? "text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300"
+            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100 focus:ring-white/20"
+        }`}
         aria-label="Help and about this website"
       >
         <HelpIcon className="h-5 w-5" />
@@ -69,7 +88,11 @@ export function Header() {
       {/* Profile – link to settings */}
       <Link
         href="/settings"
-        className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-white/20"
+        className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 ${
+          isDashboard
+            ? "text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300"
+            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100 focus:ring-white/20"
+        }`}
         aria-label="Profile and settings"
       >
         <ProfileIcon className="h-5 w-5" />

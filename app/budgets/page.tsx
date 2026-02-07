@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/formatCurrency";
-import {
-  getBudgetsWithSpent,
-  type Budget,
-  type BudgetWithSpent,
-} from "@/lib/mockData";
+import { fetchBudgets, createBudget, type Budget } from "@/lib/budgets";
+import { getBudgetsWithSpent, MOCK_TRANSACTIONS, type BudgetWithSpent } from "@/lib/mockData";
+import { supabase } from "@/lib/supabaseClient";
 
 const CATEGORY_ICONS: Record<string, string> = {
   Groceries: "🛒",
@@ -22,8 +20,29 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const budgetsWithSpent = getBudgetsWithSpent([], budgets);
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const data = await fetchBudgets(user.id);
+        setBudgets(data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load budgets");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const budgetsWithSpent = getBudgetsWithSpent(MOCK_TRANSACTIONS, budgets);
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 md:p-8">
@@ -33,6 +52,9 @@ export default function BudgetsPage() {
             <h1 className="text-2xl font-semibold text-zinc-50">Budgets & Alerts</h1>
             <p className="mt-1 text-sm text-zinc-400">Manage your spending limits</p>
           </div>
+          {error && (
+            <p className="text-sm text-red-400">{error}</p>
+          )}
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
@@ -42,14 +64,20 @@ export default function BudgetsPage() {
           </button>
         </header>
 
-        {/* Grid of Progress Cards */}
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {budgetsWithSpent.map((b) => (
-            <ProgressCard key={b.id} budget={b} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-md">
+            <p className="text-zinc-500">Loading budgets…</p>
+          </div>
+        ) : (
+          <>
+            {/* Grid of Progress Cards */}
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {budgetsWithSpent.map((b) => (
+                <ProgressCard key={b.id} budget={b} />
+              ))}
+            </div>
 
-        {budgetsWithSpent.length === 0 && (
+            {budgetsWithSpent.length === 0 && (
           <div className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-md">
             <p className="text-zinc-500">No budgets yet. Create one to track spending limits.</p>
             <button
@@ -60,6 +88,8 @@ export default function BudgetsPage() {
               Create New Budget
             </button>
           </div>
+            )}
+          </>
         )}
       </div>
 
@@ -67,8 +97,13 @@ export default function BudgetsPage() {
       {isCreateModalOpen && (
         <CreateBudgetModal
           onClose={() => setIsCreateModalOpen(false)}
-          onSave={(newBudget) => {
-            setBudgets((prev) => [...prev, newBudget]);
+          onSave={async (newBudget) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+              throw new Error("Please sign in to create a budget");
+            }
+            const created = await createBudget(user.id, newBudget.category, newBudget.budgetLimit);
+            setBudgets((prev) => [...prev, created]);
             setIsCreateModalOpen(false);
           }}
           existingCategories={budgets.map((b) => b.category)}
@@ -134,12 +169,13 @@ function CreateBudgetModal({
   existingCategories,
 }: {
   onClose: () => void;
-  onSave: (budget: Budget) => void;
+  onSave: (budget: { category: string; budgetLimit: number }) => Promise<void>;
   existingCategories: string[];
 }) {
   const [category, setCategory] = useState("");
   const [limit, setLimit] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const categories = [
     "Groceries",
@@ -152,7 +188,7 @@ function CreateBudgetModal({
     "Other",
   ].filter((c) => !existingCategories.includes(c));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     const num = parseFloat(limit);
@@ -168,11 +204,17 @@ function CreateBudgetModal({
       setError("A budget for this category already exists");
       return;
     }
-    onSave({
-      id: `b${Date.now()}`,
-      category: category.trim(),
-      budgetLimit: num,
-    });
+    setSaving(true);
+    try {
+      await onSave({
+        category: category.trim(),
+        budgetLimit: num,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create budget");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -251,9 +293,10 @@ function CreateBudgetModal({
             </button>
             <button
               type="submit"
-              className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90"
+              disabled={saving}
+              className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create
+              {saving ? "Creating…" : "Create"}
             </button>
           </div>
         </form>

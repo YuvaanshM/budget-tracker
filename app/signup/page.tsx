@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Sign up page – Sleto Glassmorphic Dark (DesignDoc.md).
+ * Sign up page – black background, white form box.
  * Sign up with Supabase Auth (email + password).
  */
 
@@ -11,9 +11,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 const inputClass =
-  "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20";
+  "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400";
 const labelClass =
-  "block text-xs font-medium uppercase tracking-wider text-zinc-500 mb-2";
+  "block text-sm font-medium text-gray-700 mb-2";
 
 export default function SignUpPage() {
   const [username, setUsername] = useState("");
@@ -30,6 +30,10 @@ export default function SignUpPage() {
     const trimmedUsername = username.trim();
     if (!trimmedUsername) {
       setError("Please choose a username");
+      return;
+    }
+    if (trimmedUsername.length > 20) {
+      setError("Username must be 20 characters or fewer");
       return;
     }
     if (password !== confirmPassword) {
@@ -87,14 +91,14 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 shadow-xl transition-[transform,border-color] hover:scale-[1.02] hover:border-white/20">
-        <h1 className="text-xl font-semibold text-center mb-6">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+        <h1 className="text-xl font-semibold text-gray-900 text-center mb-6">
           Create account
         </h1>
         <form className="space-y-4" onSubmit={handleSubmit}>
           {error && (
-            <p className="text-sm text-red-400 bg-red-500/10 rounded-xl px-3 py-2">
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
               {error}
             </p>
           )}
@@ -107,10 +111,11 @@ export default function SignUpPage() {
               type="text"
               name="username"
               autoComplete="username"
-              placeholder="Choose a username"
+              placeholder="Choose a username (max 20 characters)"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              maxLength={20}
               className={inputClass}
             />
           </div>
@@ -166,14 +171,14 @@ export default function SignUpPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl border border-white/10 bg-white/10 py-3 font-medium text-zinc-100 transition-colors hover:bg-white/20 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-xl bg-gray-900 py-3 font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Creating account…" : "Sign up"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-zinc-500">
+        <p className="mt-4 text-center text-sm text-gray-500">
           Already have an account?{" "}
-          <Link href="/login" className="text-zinc-300 hover:text-white">
+          <Link href="/login" className="text-gray-900 font-medium hover:underline">
             Log in
           </Link>
         </p>

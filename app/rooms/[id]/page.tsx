@@ -1,8 +1,8 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { formatCurrency } from "@/lib/formatCurrency";
 import {
@@ -11,8 +11,8 @@ import {
 } from "@/context/RoomsContext";
 import {
   addRoomMember,
+  deleteRoom,
   findUserByUsername,
-  removeRoomMember,
 } from "@/lib/rooms";
 import { AddRoomExpenseModal } from "@/components/AddRoomExpenseModal";
 
@@ -29,13 +29,37 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 function RoomDetailContent() {
   const params = useParams();
+  const router = useRouter();
   const roomId = params?.id as string;
   const { room, members, expenses, loading, error, refetch } = useActiveRoom();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [inviteUsername, setInviteUsername] = useState("");
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+    });
+  }, []);
+
+  const isOwner = room && currentUserId && room.createdBy === currentUserId;
+
+  const handleDeleteRoom = async () => {
+    if (!roomId || !deleteConfirm) return;
+    setDeleteSubmitting(true);
+    const { error: err } = await deleteRoom(roomId);
+    setDeleteSubmitting(false);
+    if (err) {
+      setDeleteConfirm(false);
+      return;
+    }
+    router.push("/rooms");
+  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,13 +130,47 @@ function RoomDetailContent() {
               Code: {room.inviteCode} · {members.length} member{members.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsAddExpenseOpen(true)}
-            className="rounded-xl bg-[#2E8B57] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#247a4a]"
-          >
-            Add Expense
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setIsAddExpenseOpen(true)}
+              className="rounded-xl bg-[#2E8B57] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#247a4a]"
+            >
+              Add Expense
+            </button>
+            {isOwner && (
+              <>
+                {!deleteConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirm(true)}
+                    className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    Delete Room
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDeleteRoom}
+                      disabled={deleteSubmitting}
+                      className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-70"
+                    >
+                      {deleteSubmitting ? "Deleting…" : "Confirm Delete"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(false)}
+                      disabled={deleteSubmitting}
+                      className="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Invite */}

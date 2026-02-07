@@ -184,41 +184,32 @@ export async function findUserByUsername(username: string): Promise<{ id: string
     .from("users")
     .select("id")
     .eq("username", username.trim())
-    .single();
+    .maybeSingle();
   return data ? { id: data.id } : null;
 }
 
 export async function joinRoomByInviteCode(
   inviteCode: string,
-  userId: string
+  _userId: string
 ): Promise<{ room: Room | null; error: Error | null }> {
-  const { data: roomData, error: roomError } = await supabase
-    .from("rooms")
-    .select("id, name, created_by, invite_code, created_at")
-    .eq("invite_code", inviteCode.trim().toUpperCase())
-    .single();
-
-  if (roomError || !roomData) {
-    return { room: null, error: roomError ?? new Error("Room not found") };
-  }
-
-  const { error: memberError } = await supabase.from("room_members").insert({
-    room_id: roomData.id,
-    user_id: userId,
-    role: "member",
+  // RPC bypasses RLS - handles room lookup + room_members insert server-side
+  const { data: rows, error } = await supabase.rpc("join_room_by_invite_code", {
+    p_invite_code: inviteCode.trim(),
   });
 
-  if (memberError) {
-    if (memberError.message?.includes("duplicate") || memberError.message?.includes("unique"))
-      return { room: null, error: new Error("You are already in this room") };
-    return { room: null, error: memberError };
+  if (error) {
+    return { room: null, error };
+  }
+  const roomData = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+  if (!roomData) {
+    return { room: null, error: new Error("Room not found. Check the invite code.") };
   }
 
   const room: Room = {
     id: roomData.id,
     name: roomData.name,
     createdBy: roomData.created_by,
-    inviteCode: roomData.invite_code,
+    inviteCode: roomData.invite_code ?? "",
     createdAt: roomData.created_at ?? "",
   };
   return { room, error: null };

@@ -68,3 +68,36 @@ export async function createBudget(
   }
   return toBudget(data);
 }
+
+export async function updateBudget(
+  id: string,
+  updates: { category?: string; budgetLimit?: number }
+): Promise<Budget> {
+  const body: Record<string, unknown> = {};
+  if (updates.category !== undefined) body.category = updates.category;
+  if (updates.budgetLimit !== undefined) body.budget_limit = updates.budgetLimit;
+  if (Object.keys(body).length === 0) {
+    const { data } = await supabase
+      .from("budgets")
+      .select("id, user_id, category, budget_limit, created_at")
+      .eq("id", id)
+      .single();
+    if (!data) throw new Error("Budget not found");
+    return toBudget(data);
+  }
+
+  const { data, error } = await supabase
+    .from("budgets")
+    .update(body)
+    .eq("id", id)
+    .select("id, user_id, category, budget_limit, created_at")
+    .single();
+
+  if (error) {
+    const msg = error.message;
+    if (msg?.includes("unique") || msg?.includes("duplicate"))
+      throw new Error("A budget for this category already exists.");
+    throw new Error(msg || "Failed to update budget");
+  }
+  return toBudget(data);
+}

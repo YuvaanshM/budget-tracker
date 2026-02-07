@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/formatCurrency";
-import { fetchBudgets, createBudget, type Budget } from "@/lib/budgets";
+import { fetchBudgets, createBudget, updateBudget, type Budget } from "@/lib/budgets";
 import { getBudgetsWithSpent, MOCK_TRANSACTIONS, type BudgetWithSpent } from "@/lib/mockData";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -20,6 +20,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [budgetToEdit, setBudgetToEdit] = useState<Budget | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +74,11 @@ export default function BudgetsPage() {
             {/* Grid of Progress Cards */}
             <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {budgetsWithSpent.map((b) => (
-                <ProgressCard key={b.id} budget={b} />
+                <ProgressCard
+                  key={b.id}
+                  budget={b}
+                  onEdit={() => setBudgetToEdit({ id: b.id, category: b.category, budgetLimit: b.budgetLimit })}
+                />
               ))}
             </div>
 
@@ -109,11 +114,25 @@ export default function BudgetsPage() {
           existingCategories={budgets.map((b) => b.category)}
         />
       )}
+
+      {/* Edit Budget Modal */}
+      {budgetToEdit && (
+        <EditBudgetModal
+          budget={budgetToEdit}
+          onClose={() => setBudgetToEdit(null)}
+          onSave={async (updates) => {
+            const updated = await updateBudget(budgetToEdit.id, updates);
+            setBudgets((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+            setBudgetToEdit(null);
+          }}
+          existingCategories={budgets.filter((b) => b.id !== budgetToEdit.id).map((b) => b.category)}
+        />
+      )}
     </div>
   );
 }
 
-function ProgressCard({ budget }: { budget: BudgetWithSpent }) {
+function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () => void }) {
   const { category, budgetLimit, currentSpent } = budget;
   const remaining = Math.max(0, budgetLimit - currentSpent);
   const percentUsed = budgetLimit > 0 ? (currentSpent / budgetLimit) * 100 : 0;
@@ -140,13 +159,23 @@ function ProgressCard({ budget }: { budget: BudgetWithSpent }) {
           <span>{icon}</span>
           {category}
         </span>
-        <span
-          className={`text-sm font-semibold tabular-nums ${
-            remaining <= 0 ? "text-red-400" : "text-zinc-300"
-          }`}
-        >
-          {remaining <= 0 ? "$0" : formatCurrency(remaining)} left
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-sm font-semibold tabular-nums ${
+              remaining <= 0 ? "text-red-400" : "text-zinc-300"
+            }`}
+          >
+            {remaining <= 0 ? "$0" : formatCurrency(remaining)} left
+          </span>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-lg px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/10 hover:text-zinc-200"
+            aria-label={`Edit ${category} budget`}
+          >
+            Edit
+          </button>
+        </div>
       </div>
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
         <div
@@ -298,6 +327,148 @@ function CreateBudgetModal({
               className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Creating…" : "Create"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
+function EditBudgetModal({
+  budget,
+  onClose,
+  onSave,
+  existingCategories,
+}: {
+  budget: Budget;
+  onClose: () => void;
+  onSave: (updates: { category?: string; budgetLimit?: number }) => Promise<void>;
+  existingCategories: string[];
+}) {
+  const [category, setCategory] = useState(budget.category);
+  const [limit, setLimit] = useState(String(budget.budgetLimit));
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const allCategories = [
+    "Groceries",
+    "Restaurants",
+    "Transport",
+    "Entertainment",
+    "Utilities",
+    "Shopping",
+    "Healthcare",
+    "Other",
+  ];
+  const categoryOptions = allCategories.filter(
+    (c) => c === budget.category || !existingCategories.includes(c)
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    const num = parseFloat(limit);
+    if (!category.trim()) {
+      setError("Please select a category");
+      return;
+    }
+    if (isNaN(num) || num < 0) {
+      setError("Budget limit must be 0 or greater");
+      return;
+    }
+    if (category !== budget.category && existingCategories.includes(category)) {
+      setError("A budget for this category already exists");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave({
+        category: category.trim(),
+        budgetLimit: num,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update budget";
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-budget-title"
+        className="fixed inset-x-4 bottom-4 z-50 mx-auto max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-xl md:bottom-auto md:left-1/2 md:top-1/2 md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2"
+      >
+        <div className="flex items-center justify-between">
+          <h2 id="edit-budget-title" className="text-lg font-semibold text-zinc-50">
+            Edit Budget
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-zinc-400 hover:bg-white/5 hover:text-zinc-50"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="edit-budget-category" className="block text-sm font-medium text-zinc-400">
+              Category *
+            </label>
+            <select
+              id="edit-budget-category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+            >
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_ICONS[c] ?? "📦"} {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="edit-budget-limit" className="block text-sm font-medium text-zinc-400">
+              Monthly limit ($) *
+            </label>
+            <input
+              id="edit-budget-limit"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={limit}
+              onChange={(e) => setLimit(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-white/10"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : "Save changes"}
             </button>
           </div>
         </form>

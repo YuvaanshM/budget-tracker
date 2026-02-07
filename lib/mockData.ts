@@ -134,6 +134,7 @@ export type Budget = {
   id: string;
   category: string;
   budgetLimit: number;
+  alertsEnabled?: boolean;
 };
 
 /** Mock budgets */

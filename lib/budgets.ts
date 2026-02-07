@@ -9,6 +9,7 @@ export type DbBudget = {
   user_id: string;
   category: string;
   budget_limit: number;
+  alerts_enabled?: boolean;
   created_at?: string;
 };
 
@@ -16,6 +17,7 @@ export type Budget = {
   id: string;
   category: string;
   budgetLimit: number;
+  alertsEnabled: boolean;
 };
 
 function toBudget(row: DbBudget): Budget {
@@ -23,13 +25,14 @@ function toBudget(row: DbBudget): Budget {
     id: row.id,
     category: row.category,
     budgetLimit: Number(row.budget_limit),
+    alertsEnabled: row.alerts_enabled === true,
   };
 }
 
 export async function fetchBudgets(userId: string): Promise<Budget[]> {
   const { data, error } = await supabase
     .from("budgets")
-    .select("id, user_id, category, budget_limit, created_at")
+    .select("id, user_id, category, budget_limit, alerts_enabled, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
@@ -40,7 +43,8 @@ export async function fetchBudgets(userId: string): Promise<Budget[]> {
 export async function createBudget(
   userId: string,
   category: string,
-  budgetLimit: number
+  budgetLimit: number,
+  alertsEnabled: boolean = false
 ): Promise<Budget> {
   const { data, error } = await supabase
     .from("budgets")
@@ -48,8 +52,9 @@ export async function createBudget(
       user_id: userId,
       category,
       budget_limit: budgetLimit,
+      alerts_enabled: alertsEnabled,
     })
-    .select("id, user_id, category, budget_limit, created_at")
+    .select("id, user_id, category, budget_limit, alerts_enabled, created_at")
     .single();
 
   if (error) {
@@ -71,15 +76,16 @@ export async function createBudget(
 
 export async function updateBudget(
   id: string,
-  updates: { category?: string; budgetLimit?: number }
+  updates: { category?: string; budgetLimit?: number; alertsEnabled?: boolean }
 ): Promise<Budget> {
   const body: Record<string, unknown> = {};
   if (updates.category !== undefined) body.category = updates.category;
   if (updates.budgetLimit !== undefined) body.budget_limit = updates.budgetLimit;
+  if (updates.alertsEnabled !== undefined) body.alerts_enabled = updates.alertsEnabled;
   if (Object.keys(body).length === 0) {
     const { data } = await supabase
       .from("budgets")
-      .select("id, user_id, category, budget_limit, created_at")
+      .select("id, user_id, category, budget_limit, alerts_enabled, created_at")
       .eq("id", id)
       .single();
     if (!data) throw new Error("Budget not found");
@@ -90,7 +96,7 @@ export async function updateBudget(
     .from("budgets")
     .update(body)
     .eq("id", id)
-    .select("id, user_id, category, budget_limit, created_at")
+    .select("id, user_id, category, budget_limit, alerts_enabled, created_at")
     .single();
 
   if (error) {

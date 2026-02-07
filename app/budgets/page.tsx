@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTransactions } from "@/context/TransactionsContext";
 import { formatCurrency } from "@/lib/formatCurrency";
 import { fetchBudgets, createBudget, updateBudget, type Budget } from "@/lib/budgets";
-import { getBudgetsWithSpent, MOCK_TRANSACTIONS, type BudgetWithSpent } from "@/lib/mockData";
+import { getBudgetsWithSpent, type BudgetWithSpent } from "@/lib/mockData";
 import { supabase } from "@/lib/supabaseClient";
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -18,6 +19,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function BudgetsPage() {
+  const { transactions } = useTransactions();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [budgetToEdit, setBudgetToEdit] = useState<Budget | null>(null);
@@ -43,7 +45,7 @@ export default function BudgetsPage() {
     load();
   }, []);
 
-  const budgetsWithSpent = getBudgetsWithSpent(MOCK_TRANSACTIONS, budgets);
+  const budgetsWithSpent = getBudgetsWithSpent(transactions, budgets);
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 md:p-8">
@@ -77,7 +79,7 @@ export default function BudgetsPage() {
                 <ProgressCard
                   key={b.id}
                   budget={b}
-                  onEdit={() => setBudgetToEdit({ id: b.id, category: b.category, budgetLimit: b.budgetLimit })}
+                  onEdit={() => setBudgetToEdit({ id: b.id, category: b.category, budgetLimit: b.budgetLimit, alertsEnabled: b.alertsEnabled })}
                 />
               ))}
             </div>
@@ -107,7 +109,7 @@ export default function BudgetsPage() {
             if (!user) {
               throw new Error("Please sign in to create a budget");
             }
-            const created = await createBudget(user.id, newBudget.category, newBudget.budgetLimit);
+            const created = await createBudget(user.id, newBudget.category, newBudget.budgetLimit, newBudget.alertsEnabled);
             setBudgets((prev) => [...prev, created]);
             setIsCreateModalOpen(false);
           }}
@@ -133,12 +135,11 @@ export default function BudgetsPage() {
 }
 
 function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () => void }) {
-  const { category, budgetLimit, currentSpent } = budget;
+  const { category, budgetLimit, currentSpent, alertsEnabled } = budget;
   const remaining = Math.max(0, budgetLimit - currentSpent);
   const percentUsed = budgetLimit > 0 ? (currentSpent / budgetLimit) * 100 : 0;
   const isExceeded = percentUsed >= 100;
 
-  // Green < 50%, Yellow 50–80%, Red > 80%
   const getBarColor = () => {
     if (percentUsed >= 100) return "bg-red-500";
     if (percentUsed >= 80) return "bg-red-500";
@@ -150,19 +151,19 @@ function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () 
 
   return (
     <article
-      className={`rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-[transform,border-color] hover:scale-[1.02] hover:border-white/20 ${
-        isExceeded ? "animate-pulse-subtle" : ""
+      className={`rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md transition-all hover:border-white/20 hover:shadow-lg ${
+        isExceeded ? "border-red-500/30 bg-red-500/5" : ""
       }`}
     >
-      <div className="flex items-start justify-between">
-        <span className="inline-flex items-center gap-2 text-sm font-medium text-zinc-100">
-          <span>{icon}</span>
+      <div className="flex items-start justify-between gap-2">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-100">
+          <span className="text-lg">{icon}</span>
           {category}
         </span>
         <div className="flex items-center gap-2">
           <span
             className={`text-sm font-semibold tabular-nums ${
-              remaining <= 0 ? "text-red-400" : "text-zinc-300"
+              remaining <= 0 ? "text-red-400" : "text-emerald-400/90"
             }`}
           >
             {remaining <= 0 ? "$0" : formatCurrency(remaining)} left
@@ -170,24 +171,29 @@ function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () 
           <button
             type="button"
             onClick={onEdit}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/10 hover:text-zinc-200"
+            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-white/10 hover:text-zinc-200 transition-colors"
             aria-label={`Edit ${category} budget`}
           >
             Edit
           </button>
         </div>
       </div>
-      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
         <div
-          className={`h-full rounded-full transition-all ${getBarColor()} ${
-            isExceeded ? "animate-pulse-subtle" : ""
-          }`}
+          className={`h-full rounded-full transition-all duration-300 ${getBarColor()}`}
           style={{ width: `${Math.min(percentUsed, 100)}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-zinc-500">
-        {formatCurrency(currentSpent)} of {formatCurrency(budgetLimit)} spent
-      </p>
+      <div className="mt-2 flex items-center justify-between">
+        <p className="text-xs text-zinc-500">
+          {formatCurrency(currentSpent)} of {formatCurrency(budgetLimit)} spent this month
+        </p>
+        {alertsEnabled && (
+          <span className="inline-flex items-center gap-1 text-xs text-zinc-500" title="Alerts on">
+            <span className="text-amber-400/80">🔔</span> Alerts on
+          </span>
+        )}
+      </div>
     </article>
   );
 }
@@ -198,11 +204,12 @@ function CreateBudgetModal({
   existingCategories,
 }: {
   onClose: () => void;
-  onSave: (budget: { category: string; budgetLimit: number }) => Promise<void>;
+  onSave: (budget: { category: string; budgetLimit: number; alertsEnabled: boolean }) => Promise<void>;
   existingCategories: string[];
 }) {
   const [category, setCategory] = useState("");
   const [limit, setLimit] = useState("");
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -238,6 +245,7 @@ function CreateBudgetModal({
       await onSave({
         category: category.trim(),
         budgetLimit: num,
+        alertsEnabled,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to create budget";
@@ -270,7 +278,7 @@ function CreateBudgetModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
             <label htmlFor="budget-category" className="block text-sm font-medium text-zinc-400">
               Category *
@@ -311,6 +319,30 @@ function CreateBudgetModal({
             />
           </div>
 
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div>
+              <p className="font-medium text-zinc-100">Budget alerts</p>
+              <p className="text-xs text-zinc-500">Notify when approaching or exceeding limit</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={alertsEnabled}
+              onClick={() => setAlertsEnabled((v) => !v)}
+              className={`relative h-7 w-14 shrink-0 rounded-full border transition-colors ${
+                alertsEnabled
+                  ? "border-emerald-500/50 bg-emerald-500/30"
+                  : "border-white/10 bg-white/5"
+              }`}
+            >
+              <span
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all duration-200 ${
+                  alertsEnabled ? "left-auto right-1" : "left-1 right-auto"
+                }`}
+              />
+            </button>
+          </div>
+
           {error && <p className="text-sm text-red-400">{error}</p>}
 
           <div className="flex gap-3 pt-4">
@@ -343,11 +375,12 @@ function EditBudgetModal({
 }: {
   budget: Budget;
   onClose: () => void;
-  onSave: (updates: { category?: string; budgetLimit?: number }) => Promise<void>;
+  onSave: (updates: { category?: string; budgetLimit?: number; alertsEnabled?: boolean }) => Promise<void>;
   existingCategories: string[];
 }) {
   const [category, setCategory] = useState(budget.category);
   const [limit, setLimit] = useState(String(budget.budgetLimit));
+  const [alertsEnabled, setAlertsEnabled] = useState(budget.alertsEnabled ?? false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -386,6 +419,7 @@ function EditBudgetModal({
       await onSave({
         category: category.trim(),
         budgetLimit: num,
+        alertsEnabled,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to update budget";
@@ -418,7 +452,7 @@ function EditBudgetModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
             <label htmlFor="edit-budget-category" className="block text-sm font-medium text-zinc-400">
               Category *
@@ -451,6 +485,30 @@ function EditBudgetModal({
               onChange={(e) => setLimit(e.target.value)}
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div>
+              <p className="font-medium text-zinc-100">Budget alerts</p>
+              <p className="text-xs text-zinc-500">Notify when approaching or exceeding limit</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={alertsEnabled}
+              onClick={() => setAlertsEnabled((v) => !v)}
+              className={`relative h-7 w-14 shrink-0 rounded-full border transition-colors ${
+                alertsEnabled
+                  ? "border-emerald-500/50 bg-emerald-500/30"
+                  : "border-white/10 bg-white/5"
+              }`}
+            >
+              <span
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all duration-200 ${
+                  alertsEnabled ? "left-auto right-1" : "left-1 right-auto"
+                }`}
+              />
+            </button>
           </div>
 
           {error && <p className="text-sm text-red-400">{error}</p>}

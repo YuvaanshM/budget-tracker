@@ -9,7 +9,7 @@ import { FABMobile } from "./FAB";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 
-const AUTHENTICATED_PATHS = ["/dashboard", "/history", "/budgets", "/settings"];
+const AUTHENTICATED_PATHS = ["/dashboard", "/history", "/budgets", "/settings", "/help"];
 
 function isAuthenticatedPath(pathname: string) {
   return AUTHENTICATED_PATHS.some(

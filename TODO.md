@@ -44,19 +44,19 @@
 ## Phase 2: Core Features
 
 ### 3. Expense Management
-- [ ] Add Universal Add FAB (Floating Action Button)
-  - [ ] Bottom-right on mobile, top-right header on desktop
-  - [ ] Purple-to-blue gradient, large `+` icon
-- [ ] Build Add Expense modal
-  - [ ] Immediate focus on Amount input
-  - [ ] Fields: amount, category, subcategory, description, date
-  - [ ] Users can create new categories/subcategories dynamically
-  - [ ] Default date: today
-- [ ] Implement expense CRUD (create, read, update, delete)
-- [ ] Validation & edge cases
-  - [ ] Prevent negative or non-numeric amounts
-  - [ ] Prevent invalid dates
-  - [ ] Prevent empty categories
+- [x] Add Universal Add FAB (Floating Action Button)
+  - [x] Bottom-right on mobile, top-right header on desktop
+  - [x] Purple-to-blue gradient, large `+` icon
+- [x] Build Add Expense modal
+  - [x] Immediate focus on Amount input
+  - [x] Fields: amount, category, subcategory, description, date
+  - [x] Users can create new categories/subcategories dynamically
+  - [x] Default date: today
+- [~] Implement expense CRUD (create, read, update, delete) — skeleton UI done
+- [~] Validation & edge cases — skeleton structure in place
+  - [x] Prevent negative or non-numeric amounts
+  - [x] Prevent invalid dates
+  - [x] Prevent empty categories
 
 ### 4. Dashboard
 - [ ] Top row: three summary cards

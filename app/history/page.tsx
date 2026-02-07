@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useExpenseModal, type ExpenseFormData } from "@/context/ExpenseModalContext";
 
 // Placeholder transaction type
 type Transaction = {
@@ -13,14 +14,22 @@ type Transaction = {
   isIncome: boolean;
 };
 
-// Mock data for skeleton
+// Mock data for skeleton (date in display format; edit modal needs YYYY-MM-DD)
 const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: "1", date: "Feb 6, 2025", category: "Groceries", categoryIcon: "🛒", description: "Weekly groceries", amount: -85.5, isIncome: false },
-  { id: "2", date: "Feb 5, 2025", category: "Salary", categoryIcon: "💼", description: "Monthly salary", amount: 3200, isIncome: true },
-  { id: "3", date: "Feb 4, 2025", category: "Restaurants", categoryIcon: "🍽️", description: "Dinner out", amount: -42, isIncome: false },
-  { id: "4", date: "Feb 3, 2025", category: "Transport", categoryIcon: "🚗", description: "Gas station", amount: -55, isIncome: false },
-  { id: "5", date: "Feb 2, 2025", category: "Entertainment", categoryIcon: "🎬", description: "Movie tickets", amount: -28, isIncome: false },
+  { id: "1", date: "2025-02-06", category: "Groceries", categoryIcon: "🛒", description: "Weekly groceries", amount: -85.5, isIncome: false },
+  { id: "2", date: "2025-02-05", category: "Salary", categoryIcon: "💼", description: "Monthly salary", amount: 3200, isIncome: true },
+  { id: "3", date: "2025-02-04", category: "Restaurants", categoryIcon: "🍽️", description: "Dinner out", amount: -42, isIncome: false },
+  { id: "4", date: "2025-02-03", category: "Transport", categoryIcon: "🚗", description: "Gas station", amount: -55, isIncome: false },
+  { id: "5", date: "2025-02-02", category: "Entertainment", categoryIcon: "🎬", description: "Movie tickets", amount: -28, isIncome: false },
 ];
+
+function formatDate(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 const FILTER_PILLS = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 
@@ -29,6 +38,37 @@ export default function ExpenseHistoryPage() {
   const [activeFilter, setActiveFilter] = useState<(typeof FILTER_PILLS)[number]>("Monthly");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { openEditModal } = useExpenseModal();
+
+  const transactionToFormData = (tx: Transaction): ExpenseFormData => ({
+    id: tx.id,
+    amount: Math.abs(tx.amount).toString(),
+    category: tx.category,
+    subcategory: "",
+    description: tx.description,
+    date: tx.date,
+    isIncome: tx.isIncome,
+  });
+
+  const handleEditClick = () => {
+    if (selectedTransaction) {
+      openEditModal(transactionToFormData(selectedTransaction));
+      setIsDrawerOpen(false);
+      setSelectedTransaction(null);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    console.log("Delete transaction:", selectedTransaction?.id);
+    setShowDeleteConfirm(false);
+    setIsDrawerOpen(false);
+    setSelectedTransaction(null);
+  };
 
   const handleRowClick = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -38,6 +78,7 @@ export default function ExpenseHistoryPage() {
   const closeDrawer = () => {
     setIsDrawerOpen(false);
     setSelectedTransaction(null);
+    setShowDeleteConfirm(false);
   };
 
   return (
@@ -111,7 +152,7 @@ export default function ExpenseHistoryPage() {
                     onClick={() => handleRowClick(tx)}
                     className="cursor-pointer border-b border-white/5 transition-colors hover:bg-white/5 last:border-b-0"
                   >
-                    <td className="px-6 py-4 text-sm text-zinc-300">{tx.date}</td>
+                    <td className="px-6 py-4 text-sm text-zinc-300">{formatDate(tx.date)}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-2 text-sm text-zinc-200">
                         <span>{tx.categoryIcon}</span>
@@ -146,7 +187,7 @@ export default function ExpenseHistoryPage() {
                   <div className="min-w-0">
                     <p className="truncate font-medium text-zinc-100">{tx.description}</p>
                     <p className="text-sm text-zinc-500">
-                      {tx.date} · {tx.category}
+                      {formatDate(tx.date)} · {tx.category}
                     </p>
                   </div>
                 </div>
@@ -211,22 +252,48 @@ export default function ExpenseHistoryPage() {
                   </div>
                   <div>
                     <p className="text-xs font-medium uppercase text-zinc-500">Date</p>
-                    <p className="mt-1 text-zinc-100">{selectedTransaction.date}</p>
+                    <p className="mt-1 text-zinc-100">{formatDate(selectedTransaction.date)}</p>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
+                      onClick={handleEditClick}
                       className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-white/10"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
+                      onClick={handleDeleteClick}
                       className="flex-1 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-500/20"
                     >
                       Delete
                     </button>
                   </div>
+                  {/* Delete confirmation skeleton */}
+                  {showDeleteConfirm && (
+                    <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
+                      <p className="text-sm text-zinc-300">
+                        Are you sure you want to delete this transaction?
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="flex-1 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={confirmDelete}
+                          className="flex-1 rounded-lg bg-red-500/20 px-3 py-2 text-sm font-medium text-red-400"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </aside>

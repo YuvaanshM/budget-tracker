@@ -1,6 +1,87 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+const ACCEPTED_IMAGE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/gif",
+  "image/webp",
+];
+const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+
 export default function SettingsPage() {
+  const [email, setEmail] = useState<string>("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.email) setEmail(user.email);
+      const url =
+        user?.user_metadata?.avatar_url ??
+        (user?.user_metadata?.avatar as string | undefined);
+      if (url) setAvatarUrl(url);
+    }
+    loadUser();
+  }, []);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAvatarError(null);
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setAvatarError("Please use PNG, JPG, GIF, or WebP.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      setAvatarError("Image must be 2MB or smaller.");
+      return;
+    }
+    setAvatarLoading(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setAvatarError("You must be signed in to upload an avatar.");
+        return;
+      }
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) {
+        setAvatarError(uploadError.message || "Upload failed.");
+        return;
+      }
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl },
+      });
+      if (updateError) {
+        setAvatarError(updateError.message || "Could not save avatar.");
+        return;
+      }
+      setAvatarUrl(publicUrl);
+    } catch {
+      setAvatarError("Something went wrong. Please try again.");
+    } finally {
+      setAvatarLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 p-6 md:p-8">
       <div className="mx-auto max-w-2xl space-y-8">
@@ -19,24 +100,45 @@ export default function SettingsPage() {
             Update your profile picture and email
           </p>
           <div className="mt-6 space-y-4">
-            {/* Avatar Upload - Placeholder */}
+            {/* Avatar Upload */}
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5">
-                <span className="text-2xl text-zinc-500">?</span>
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Your avatar"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl text-zinc-500">?</span>
+                )}
               </div>
               <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  aria-hidden
+                />
                 <button
                   type="button"
-                  className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-50"
+                  disabled={avatarLoading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Upload Avatar
+                  {avatarLoading ? "Uploading…" : "Upload Avatar"}
                 </button>
                 <p className="mt-1 text-xs text-zinc-500">
-                  PNG, JPG up to 2MB
+                  PNG, JPG, GIF or WebP, up to 2MB
                 </p>
+                {avatarError && (
+                  <p className="mt-1 text-xs text-red-400">{avatarError}</p>
+                )}
               </div>
             </div>
-            {/* Email Update - Placeholder */}
+            {/* Email (display account email) */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-zinc-400">
                 Email
@@ -44,9 +146,14 @@ export default function SettingsPage() {
               <input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                value={email}
+                readOnly
+                placeholder="Not signed in"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 read-only:cursor-default read-only:opacity-90"
               />
+              <p className="mt-1 text-xs text-zinc-500">
+                Email for this account (read-only)
+              </p>
             </div>
           </div>
         </section>

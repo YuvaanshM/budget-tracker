@@ -48,28 +48,28 @@ export default function BudgetsPage() {
   const budgetsWithSpent = getBudgetsWithSpent(transactions, budgets);
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-6 md:p-8">
+    <div className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-4xl">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-50">Budgets & Alerts</h1>
-            <p className="mt-1 text-sm text-zinc-400">Manage your spending limits</p>
+            <h1 className="text-2xl font-semibold text-gray-900">Budgets & Alerts</h1>
+            <p className="mt-1 text-sm text-gray-500">Manage your spending limits</p>
           </div>
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-red-500">{error}</p>
           )}
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+            className="rounded-xl bg-[#2E8B57] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#247a4a] transition-colors"
           >
             Create New Budget
           </button>
         </header>
 
         {loading ? (
-          <div className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-md">
-            <p className="text-zinc-500">Loading budgets…</p>
+          <div className="mt-12 rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+            <p className="text-gray-500">Loading budgets…</p>
           </div>
         ) : (
           <>
@@ -85,12 +85,12 @@ export default function BudgetsPage() {
             </div>
 
             {budgetsWithSpent.length === 0 && (
-          <div className="mt-12 rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur-md">
-            <p className="text-zinc-500">No budgets yet. Create one to track spending limits.</p>
+          <div className="mt-12 rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+            <p className="text-gray-500">No budgets yet. Create one to track spending limits.</p>
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="mt-4 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-2 text-sm font-medium text-white"
+              className="mt-4 rounded-xl bg-[#2E8B57] px-4 py-2 text-sm font-medium text-white hover:bg-[#247a4a]"
             >
               Create New Budget
             </button>
@@ -144,26 +144,26 @@ function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () 
     if (percentUsed >= 100) return "bg-red-500";
     if (percentUsed >= 80) return "bg-red-500";
     if (percentUsed >= 50) return "bg-amber-500";
-    return "bg-emerald-500";
+    return "bg-[#2E8B57]";
   };
 
   const icon = CATEGORY_ICONS[category] ?? "📦";
 
   return (
     <article
-      className={`rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md transition-all hover:border-white/20 hover:shadow-lg ${
-        isExceeded ? "border-red-500/30 bg-red-500/5" : ""
+      className={`rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300 hover:shadow-md ${
+        isExceeded ? "border-red-300 bg-red-50" : ""
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-100">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
           <span className="text-lg">{icon}</span>
           {category}
         </span>
         <div className="flex items-center gap-2">
           <span
             className={`text-sm font-semibold tabular-nums ${
-              remaining <= 0 ? "text-red-400" : "text-emerald-400/90"
+              remaining <= 0 ? "text-red-500" : "text-[#2E8B57]"
             }`}
           >
             {remaining <= 0 ? "$0" : formatCurrency(remaining)} left
@@ -171,26 +171,26 @@ function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () 
           <button
             type="button"
             onClick={onEdit}
-            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-white/10 hover:text-zinc-200 transition-colors"
+            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
             aria-label={`Edit ${category} budget`}
           >
             Edit
           </button>
         </div>
       </div>
-      <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-gray-100">
         <div
           className={`h-full rounded-full transition-all duration-300 ${getBarColor()}`}
           style={{ width: `${Math.min(percentUsed, 100)}%` }}
         />
       </div>
       <div className="mt-2 flex items-center justify-between">
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-gray-500">
           {formatCurrency(currentSpent)} of {formatCurrency(budgetLimit)} spent this month
         </p>
         {alertsEnabled && (
-          <span className="inline-flex items-center gap-1 text-xs text-zinc-500" title="Alerts on">
-            <span className="text-amber-400/80">🔔</span> Alerts on
+          <span className="inline-flex items-center gap-1 text-xs text-gray-500" title="Alerts on">
+            <span className="text-amber-600">🔔</span> Alerts on
           </span>
         )}
       </div>
@@ -262,16 +262,16 @@ function CreateBudgetModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-budget-title"
-        className="fixed inset-x-4 bottom-4 z-50 mx-auto max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-xl md:bottom-auto md:left-1/2 md:top-1/2 md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2"
+        className="fixed inset-x-4 bottom-4 z-50 mx-auto max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl md:bottom-auto md:left-1/2 md:top-1/2 md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2"
       >
         <div className="flex items-center justify-between">
-          <h2 id="create-budget-title" className="text-lg font-semibold text-zinc-50">
+          <h2 id="create-budget-title" className="text-lg font-semibold text-gray-900">
             Create New Budget
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-400 hover:bg-white/5 hover:text-zinc-50"
+            className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
             aria-label="Close"
           >
             ✕
@@ -280,14 +280,14 @@ function CreateBudgetModal({
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
-            <label htmlFor="budget-category" className="block text-sm font-medium text-zinc-400">
+            <label htmlFor="budget-category" className="block text-sm font-medium text-gray-600">
               Category *
             </label>
             <select
               id="budget-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
             >
               <option value="">Select category</option>
               {categories.map((c) => (
@@ -304,7 +304,7 @@ function CreateBudgetModal({
           </div>
 
           <div>
-            <label htmlFor="budget-limit" className="block text-sm font-medium text-zinc-400">
+            <label htmlFor="budget-limit" className="block text-sm font-medium text-gray-600">
               Monthly limit ($) *
             </label>
             <input
@@ -315,14 +315,14 @@ function CreateBudgetModal({
               placeholder="0.00"
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
             <div>
-              <p className="font-medium text-zinc-100">Budget alerts</p>
-              <p className="text-xs text-zinc-500">Notify when approaching or exceeding limit</p>
+              <p className="font-medium text-gray-900">Budget alerts</p>
+              <p className="text-xs text-gray-500">Notify when approaching or exceeding limit</p>
             </div>
             <button
               type="button"
@@ -331,8 +331,8 @@ function CreateBudgetModal({
               onClick={() => setAlertsEnabled((v) => !v)}
               className={`relative h-7 w-14 shrink-0 rounded-full border transition-colors ${
                 alertsEnabled
-                  ? "border-emerald-500/50 bg-emerald-500/30"
-                  : "border-white/10 bg-white/5"
+                  ? "border-[#2E8B57] bg-[#2E8B57]/20"
+                  : "border-gray-200 bg-gray-100"
               }`}
             >
               <span
@@ -349,14 +349,14 @@ function CreateBudgetModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-white/10"
+              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl bg-[#2E8B57] px-4 py-3 text-sm font-medium text-white hover:bg-[#247a4a] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Creating…" : "Create"}
             </button>
@@ -436,16 +436,16 @@ function EditBudgetModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-budget-title"
-        className="fixed inset-x-4 bottom-4 z-50 mx-auto max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-xl md:bottom-auto md:left-1/2 md:top-1/2 md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2"
+        className="fixed inset-x-4 bottom-4 z-50 mx-auto max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl md:bottom-auto md:left-1/2 md:top-1/2 md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2"
       >
         <div className="flex items-center justify-between">
-          <h2 id="edit-budget-title" className="text-lg font-semibold text-zinc-50">
+          <h2 id="edit-budget-title" className="text-lg font-semibold text-gray-900">
             Edit Budget
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-400 hover:bg-white/5 hover:text-zinc-50"
+            className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
             aria-label="Close"
           >
             ✕
@@ -454,14 +454,14 @@ function EditBudgetModal({
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
-            <label htmlFor="edit-budget-category" className="block text-sm font-medium text-zinc-400">
+            <label htmlFor="edit-budget-category" className="block text-sm font-medium text-gray-600">
               Category *
             </label>
             <select
               id="edit-budget-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
             >
               {categoryOptions.map((c) => (
                 <option key={c} value={c}>
@@ -472,7 +472,7 @@ function EditBudgetModal({
           </div>
 
           <div>
-            <label htmlFor="edit-budget-limit" className="block text-sm font-medium text-zinc-400">
+            <label htmlFor="edit-budget-limit" className="block text-sm font-medium text-gray-600">
               Monthly limit ($) *
             </label>
             <input
@@ -483,14 +483,14 @@ function EditBudgetModal({
               placeholder="0.00"
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
             <div>
-              <p className="font-medium text-zinc-100">Budget alerts</p>
-              <p className="text-xs text-zinc-500">Notify when approaching or exceeding limit</p>
+              <p className="font-medium text-gray-900">Budget alerts</p>
+              <p className="text-xs text-gray-500">Notify when approaching or exceeding limit</p>
             </div>
             <button
               type="button"
@@ -499,8 +499,8 @@ function EditBudgetModal({
               onClick={() => setAlertsEnabled((v) => !v)}
               className={`relative h-7 w-14 shrink-0 rounded-full border transition-colors ${
                 alertsEnabled
-                  ? "border-emerald-500/50 bg-emerald-500/30"
-                  : "border-white/10 bg-white/5"
+                  ? "border-[#2E8B57] bg-[#2E8B57]/20"
+                  : "border-gray-200 bg-gray-100"
               }`}
             >
               <span
@@ -517,14 +517,14 @@ function EditBudgetModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-white/10"
+              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl bg-[#2E8B57] px-4 py-3 text-sm font-medium text-white hover:bg-[#247a4a] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Saving…" : "Save changes"}
             </button>

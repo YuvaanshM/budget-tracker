@@ -87,26 +87,26 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-6 md:p-8">
+    <div className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-2xl space-y-8">
         {/* Page Header */}
         <header>
-          <h1 className="text-2xl font-semibold text-zinc-50">Settings</h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Manage your profile, preferences, and data
           </p>
         </header>
 
         {/* Profile Section */}
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-          <h2 className="text-lg font-medium text-zinc-100">Profile</h2>
-          <p className="mt-1 text-sm text-zinc-500">
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-medium text-gray-900">Profile</h2>
+          <p className="mt-1 text-sm text-gray-500">
             Your account details
           </p>
           <div className="mt-6 space-y-4">
             {/* Username – editable with update button */}
             <form onSubmit={handleUpdateUsername}>
-              <label htmlFor="username" className="block text-sm font-medium text-zinc-400">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-600">
                 Username
               </label>
               <div className="mt-2 flex gap-2">
@@ -116,26 +116,26 @@ export default function SettingsPage() {
                   value={usernameEdit}
                   onChange={(e) => setUsernameEdit(e.target.value)}
                   placeholder="Choose a username"
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                  className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-500 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
                 />
                 <button
                   type="submit"
                   disabled={usernameSaving || usernameEdit.trim() === username}
-                  className="shrink-0 rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="shrink-0 rounded-xl border border-[#2E8B57] bg-[#2E8B57] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#247a4a] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {usernameSaving ? "Saving…" : "Update"}
                 </button>
               </div>
               {usernameError && (
-                <p className="mt-1 text-xs text-red-400">{usernameError}</p>
+                <p className="mt-1 text-xs text-red-500">{usernameError}</p>
               )}
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-gray-500">
                 Usernames must be unique. You can change yours here.
               </p>
             </form>
             {/* Email – read-only */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-zinc-400">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-600">
                 Email
               </label>
               <input
@@ -144,9 +144,9 @@ export default function SettingsPage() {
                 value={email}
                 readOnly
                 placeholder="Not signed in"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder:text-zinc-500 read-only:cursor-default read-only:opacity-90 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-700 placeholder:text-gray-500 read-only:cursor-default read-only:opacity-90 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
               />
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-gray-500">
                 Email for this account (read-only)
               </p>
             </div>
@@ -154,20 +154,20 @@ export default function SettingsPage() {
         </section>
 
         {/* Preferences Section */}
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-          <h2 className="text-lg font-medium text-zinc-100">Preferences</h2>
-          <p className="mt-1 text-sm text-zinc-500">
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-medium text-gray-900">Preferences</h2>
+          <p className="mt-1 text-sm text-gray-500">
             Customize how the app works for you
           </p>
           <div className="mt-6 space-y-4">
             {/* Default Currency - Placeholder */}
             <div>
-              <label htmlFor="currency" className="block text-sm font-medium text-zinc-400">
+              <label htmlFor="currency" className="block text-sm font-medium text-gray-600">
                 Default Currency
               </label>
               <select
                 id="currency"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
               >
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
@@ -176,10 +176,10 @@ export default function SettingsPage() {
               </select>
             </div>
             {/* AI Auto-Categorization Toggle - Placeholder */}
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
               <div>
-                <p className="font-medium text-zinc-100">AI Auto-Categorization</p>
-                <p className="text-sm text-zinc-500">
+                <p className="font-medium text-gray-900">AI Auto-Categorization</p>
+                <p className="text-sm text-gray-500">
                   Automatically categorize transactions
                 </p>
               </div>
@@ -187,25 +187,25 @@ export default function SettingsPage() {
                 type="button"
                 role="switch"
                 aria-checked="false"
-                className="relative h-6 w-11 shrink-0 rounded-full border border-white/10 bg-zinc-700 transition-colors"
+                className="relative h-6 w-11 shrink-0 rounded-full border border-gray-200 bg-gray-200 transition-colors"
               >
-                <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-zinc-400 transition-transform" />
+                <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-gray-400 transition-transform" />
               </button>
             </div>
           </div>
         </section>
 
         {/* Account Section */}
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-          <h2 className="text-lg font-medium text-zinc-100">Account</h2>
-          <p className="mt-1 text-sm text-zinc-500">
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-medium text-gray-900">Account</h2>
+          <p className="mt-1 text-sm text-gray-500">
             Sign out of your account on this device
           </p>
           <div className="mt-6">
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:border-gray-300"
             >
               Log out
             </button>
@@ -213,21 +213,21 @@ export default function SettingsPage() {
         </section>
 
         {/* Data Section (Danger Zone) */}
-        <section className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 backdrop-blur-md">
-          <h2 className="text-lg font-medium text-zinc-100">Data</h2>
-          <p className="mt-1 text-sm text-zinc-500">
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+          <h2 className="text-lg font-medium text-gray-900">Data</h2>
+          <p className="mt-1 text-sm text-gray-500">
             Export or delete your data
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50"
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               Export to CSV
             </button>
             <button
               type="button"
-              className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300"
+              className="rounded-xl border border-red-300 bg-red-100 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-200"
             >
               Wipe All Data
             </button>

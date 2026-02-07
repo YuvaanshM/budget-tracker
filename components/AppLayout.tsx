@@ -10,6 +10,7 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 
 const AUTHENTICATED_PATHS = ["/dashboard", "/analytics", "/history", "/budgets", "/settings", "/help"];
+const LIGHT_THEME_PATHS = ["/dashboard", "/analytics", "/history", "/budgets", "/settings"];
 
 function isAuthenticatedPath(pathname: string) {
   return AUTHENTICATED_PATHS.some(
@@ -17,15 +18,21 @@ function isAuthenticatedPath(pathname: string) {
   );
 }
 
+function isLightThemePath(pathname: string) {
+  return LIGHT_THEME_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(path + "/")
+  );
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLoggedIn = isAuthenticatedPath(pathname ?? "");
-  const isDashboard = pathname === "/dashboard";
+  const useLightTheme = isLightThemePath(pathname ?? "");
 
   return (
     <TransactionsProvider>
       <ExpenseModalProvider>
-        <div className={`min-h-screen ${isDashboard ? "bg-gray-50" : "bg-zinc-950"}`}>
+        <div className={`min-h-screen ${useLightTheme ? "bg-gray-50" : "bg-zinc-950"}`}>
         {isLoggedIn && (
           <>
             <Sidebar />

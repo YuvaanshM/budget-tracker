@@ -177,6 +177,7 @@ export default function SettingsPage() {
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
+                <option value="INR">INR (₹)</option>
               </select>
             </div>
             {/* AI Auto-Categorization Toggle - Placeholder */}

@@ -20,6 +20,47 @@ function formatDate(iso: string) {
     : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** Parse transaction date string to start-of-day timestamp (local) for range checks */
+function getTxDateMs(tx: Transaction): number {
+  const s = (tx.date ?? "").trim();
+  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(s)
+    ? s
+    : Number.isNaN(Date.parse(s))
+      ? new Date().toISOString().slice(0, 10)
+      : new Date(s).toISOString().slice(0, 10);
+  return new Date(ymd + "T00:00:00").getTime();
+}
+
+function getRangeForFilter(
+  filter: "Daily" | "Weekly" | "Monthly" | "Yearly"
+): { startMs: number; endMs: number } {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const endOfToday = startOfToday + 24 * 60 * 60 * 1000 - 1;
+
+  switch (filter) {
+    case "Daily":
+      return { startMs: startOfToday, endMs: endOfToday };
+    case "Weekly": {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - 6);
+      const start = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate()).getTime();
+      return { startMs: start, endMs: endOfToday };
+    }
+    case "Monthly": {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth(), lastDay.getDate(), 23, 59, 59, 999).getTime();
+      return { startMs: startOfMonth, endMs: endOfMonth };
+    }
+    case "Yearly": {
+      const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+      const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime();
+      return { startMs: startOfYear, endMs: endOfYear };
+    }
+  }
+}
+
 const FILTER_PILLS = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 
 export default function ExpenseHistoryPage() {
@@ -91,6 +132,16 @@ export default function ExpenseHistoryPage() {
     setDeleteError(null);
   };
 
+  const searchTerm = searchQuery.trim().toLowerCase();
+  const { startMs, endMs } = getRangeForFilter(activeFilter);
+
+  const filteredTransactions = transactions.filter((tx) => {
+    const txMs = getTxDateMs(tx);
+    if (txMs < startMs || txMs > endMs) return false;
+    if (searchTerm === "") return true;
+    return (tx.description ?? "").toLowerCase().includes(searchTerm);
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 p-6 md:p-8 flex items-center justify-center">
@@ -125,7 +176,7 @@ export default function ExpenseHistoryPage() {
               placeholder="Search by description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pl-10 text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pl-10 text-zinc-100 placeholder:text-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
               🔍
@@ -171,7 +222,7 @@ export default function ExpenseHistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((tx) => (
+                {filteredTransactions.map((tx) => (
                   <tr
                     key={tx.id}
                     onClick={() => handleRowClick(tx)}
@@ -200,7 +251,7 @@ export default function ExpenseHistoryPage() {
 
           {/* Mobile: Card-based list */}
           <div className="md:hidden divide-y divide-white/5">
-            {transactions.map((tx) => (
+            {filteredTransactions.map((tx) => (
               <button
                 key={tx.id}
                 type="button"

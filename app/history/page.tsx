@@ -2,26 +2,7 @@
 
 import { useState } from "react";
 import { useExpenseModal, type ExpenseFormData } from "@/context/ExpenseModalContext";
-
-// Placeholder transaction type
-type Transaction = {
-  id: string;
-  date: string;
-  category: string;
-  categoryIcon: string;
-  description: string;
-  amount: number;
-  isIncome: boolean;
-};
-
-// Mock data for skeleton (date in display format; edit modal needs YYYY-MM-DD)
-const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: "1", date: "2025-02-06", category: "Groceries", categoryIcon: "🛒", description: "Weekly groceries", amount: -85.5, isIncome: false },
-  { id: "2", date: "2025-02-05", category: "Salary", categoryIcon: "💼", description: "Monthly salary", amount: 3200, isIncome: true },
-  { id: "3", date: "2025-02-04", category: "Restaurants", categoryIcon: "🍽️", description: "Dinner out", amount: -42, isIncome: false },
-  { id: "4", date: "2025-02-03", category: "Transport", categoryIcon: "🚗", description: "Gas station", amount: -55, isIncome: false },
-  { id: "5", date: "2025-02-02", category: "Entertainment", categoryIcon: "🎬", description: "Movie tickets", amount: -28, isIncome: false },
-];
+import { MOCK_TRANSACTIONS, type Transaction } from "@/lib/mockData";
 
 function formatDate(iso: string) {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {

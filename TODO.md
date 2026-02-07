@@ -59,19 +59,19 @@
   - [x] Prevent empty categories
 
 ### 4. Dashboard
-- [ ] Top row: three summary cards
-  - [ ] Total Income
-  - [ ] Total Expenses
-  - [ ] Remaining Budget
-- [ ] Middle row: charts
-  - [ ] Area chart: 30-day spending trends (left 60%)
-  - [ ] Donut chart: spending by category (right 40%)
-  - [ ] Side-by-side on desktop, stacked on mobile
-- [ ] Bottom row
-  - [ ] Upcoming Bills or Budget Alerts (left 50%)
-  - [ ] Mini-table: 5 most recent transactions (right 50%)
-- [ ] Empty states: "No expenses yet" when no data
-- [ ] Handle very high/low values in charts
+- [x] Top row: three summary cards
+  - [x] Total Income
+  - [x] Total Expenses
+  - [x] Remaining Budget
+- [x] Middle row: charts
+  - [x] Area chart: 30-day spending trends (left 60%)
+  - [x] Donut chart: spending by category (right 40%)
+  - [x] Side-by-side on desktop, stacked on mobile
+- [x] Bottom row
+  - [x] Upcoming Bills or Budget Alerts (left 50%)
+  - [x] Mini-table: 5 most recent transactions (right 50%)
+- [x] Empty states: "No expenses yet" when no data
+- [x] Handle very high/low values in charts
 
 ### 5. Expense History
 - [ ] Header: search bar (by description) + filter pills (Daily, Weekly, Monthly, Yearly)

@@ -12,8 +12,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTransactions } from "@/context/TransactionsContext";
 import { formatCurrency } from "@/lib/formatCurrency";
 import {
+  getMonthlyExpensesTotal,
+  getMonthlyIncomeTotal,
   getSpendingByCategory,
   getSpendingTrendData,
   type Transaction,
@@ -36,22 +39,33 @@ function formatDate(iso: string) {
 }
 
 export default function DashboardPage() {
-  const transactions: Transaction[] = [];
-  const hasData = transactions.length > 0;
-
-  const totalIncome = transactions
-    .filter((t) => t.isIncome)
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalExpenses = transactions
-    .filter((t) => !t.isIncome)
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const { transactions, loading, error } = useTransactions();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const totalIncome = getMonthlyIncomeTotal(transactions, currentMonth);
+  const totalExpenses = getMonthlyExpensesTotal(transactions, currentMonth);
   const remainingBudget = totalIncome - totalExpenses;
+  const hasData = transactions.length > 0;
 
   const spendingTrend = getSpendingTrendData(transactions);
   const spendingByCategory = getSpendingByCategory(transactions);
   const recentTransactions = [...transactions]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-6 flex items-center justify-center">
+        <p className="text-zinc-400">Loading…</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-6 flex items-center justify-center">
+        <p className="text-red-400">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-6">

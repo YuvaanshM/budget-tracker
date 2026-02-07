@@ -9,6 +9,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { ensureCurrentUserInPublicUsers } from "@/lib/ensureUser";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function LoginPage() {
         setError(error.message);
         return;
       }
+      await ensureCurrentUserInPublicUsers();
       router.push("/dashboard");
       router.refresh();
     } catch {

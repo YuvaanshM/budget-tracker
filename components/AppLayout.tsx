@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { ExpenseModalProvider } from "@/context/ExpenseModalContext";
+import { TransactionsProvider } from "@/context/TransactionsContext";
 import { AddExpenseModal } from "./AddExpenseModal";
 import { BottomNav } from "./BottomNav";
 import { FABMobile } from "./FAB";
@@ -21,8 +22,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isLoggedIn = isAuthenticatedPath(pathname ?? "");
 
   return (
-    <ExpenseModalProvider>
-      <div className="min-h-screen bg-zinc-950">
+    <TransactionsProvider>
+      <ExpenseModalProvider>
+        <div className="min-h-screen bg-zinc-950">
         {isLoggedIn && (
           <>
             <Sidebar />
@@ -41,5 +43,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <AddExpenseModal />
     </ExpenseModalProvider>
+    </TransactionsProvider>
   );
 }

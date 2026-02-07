@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useCallback } from "react";
 
+export type IncomeType = "yearly_salary" | "monthly_salary" | "one_time";
+
 export type ExpenseFormData = {
   id?: string;
   amount: string;
@@ -10,6 +12,8 @@ export type ExpenseFormData = {
   description: string;
   date: string;
   isIncome: boolean;
+  /** Only when isIncome: how to treat the amount for monthly calculations */
+  incomeType?: IncomeType;
 };
 
 type ExpenseModalContextType = {

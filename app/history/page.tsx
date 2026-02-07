@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useExpenseModal, type ExpenseFormData } from "@/context/ExpenseModalContext";
+import { useTransactions } from "@/context/TransactionsContext";
 import { type Transaction } from "@/lib/mockData";
 
 function formatDate(iso: string) {
@@ -15,7 +16,7 @@ function formatDate(iso: string) {
 const FILTER_PILLS = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 
 export default function ExpenseHistoryPage() {
-  const transactions: Transaction[] = [];
+  const { transactions, loading, error } = useTransactions();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof FILTER_PILLS)[number]>("Monthly");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -31,6 +32,7 @@ export default function ExpenseHistoryPage() {
     description: tx.description,
     date: tx.date,
     isIncome: tx.isIncome,
+    incomeType: tx.incomeType,
   });
 
   const handleEditClick = () => {
@@ -62,6 +64,21 @@ export default function ExpenseHistoryPage() {
     setSelectedTransaction(null);
     setShowDeleteConfirm(false);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 p-6 md:p-8 flex items-center justify-center">
+        <p className="text-zinc-400">Loading…</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="min-h-screen bg-zinc-950 p-6 md:p-8 flex items-center justify-center">
+        <p className="text-red-400">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 md:p-8">

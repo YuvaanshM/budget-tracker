@@ -3,6 +3,8 @@
  * Replace with Supabase queries when Auth & DB are ready.
  */
 
+export type IncomeType = "yearly_salary" | "monthly_salary" | "one_time";
+
 export type Transaction = {
   id: string;
   date: string;
@@ -11,7 +13,75 @@ export type Transaction = {
   description: string;
   amount: number;
   isIncome: boolean;
+  incomeType?: IncomeType;
+  /** Which table this came from (for edit: update income vs expenses) */
+  source?: "income" | "expense";
 };
+
+export const CATEGORY_ICONS: Record<string, string> = {
+  Groceries: "🛒",
+  Restaurants: "🍽️",
+  Transport: "🚗",
+  Entertainment: "🎬",
+  Utilities: "💡",
+  Shopping: "🛍️",
+  Healthcare: "⚕️",
+  Salary: "💼",
+  "One-time": "💰",
+  "Yearly salary": "💼",
+  "Monthly salary": "💵",
+  Other: "📦",
+};
+
+export function getCategoryIcon(category: string, isIncome?: boolean): string {
+  if (isIncome && !category) return "💼";
+  return CATEGORY_ICONS[category] ?? "📦";
+}
+
+/** Category strings we store for income; expense uses other categories */
+const INCOME_CATEGORIES = ["Yearly salary", "Monthly salary", "One-time"] as const;
+
+export function isIncomeCategory(category: string | null): boolean {
+  return category != null && INCOME_CATEGORIES.includes(category as (typeof INCOME_CATEGORIES)[number]);
+}
+
+export function categoryToIncomeType(category: string | null): IncomeType | undefined {
+  if (category === "Yearly salary") return "yearly_salary";
+  if (category === "Monthly salary") return "monthly_salary";
+  if (category === "One-time") return "one_time";
+  return undefined;
+}
+
+/** Monthly income total: yearly_salary → amount/12, monthly_salary → amount, one_time → amount if in month */
+export function getMonthlyIncomeTotal(
+  transactions: Transaction[],
+  yearMonth: string
+): number {
+  let total = 0;
+  for (const t of transactions) {
+    if (!t.isIncome || t.amount <= 0) continue;
+    if (t.incomeType === "yearly_salary") {
+      total += t.amount / 12;
+    } else if (t.incomeType === "monthly_salary") {
+      total += t.amount;
+    } else if (t.incomeType === "one_time" && t.date.startsWith(yearMonth)) {
+      total += t.amount;
+    } else if (!t.incomeType && t.date.startsWith(yearMonth)) {
+      total += t.amount;
+    }
+  }
+  return total;
+}
+
+/** Total expenses for a month */
+export function getMonthlyExpensesTotal(
+  transactions: Transaction[],
+  yearMonth: string
+): number {
+  return transactions
+    .filter((t) => !t.isIncome && t.date.startsWith(yearMonth))
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+}
 
 export const MOCK_TRANSACTIONS: Transaction[] = [
   { id: "1", date: "2025-02-06", category: "Groceries", categoryIcon: "🛒", description: "Weekly groceries", amount: -85.5, isIncome: false },

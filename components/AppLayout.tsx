@@ -20,11 +20,12 @@ function isAuthenticatedPath(pathname: string) {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLoggedIn = isAuthenticatedPath(pathname ?? "");
+  const isDashboard = pathname === "/dashboard";
 
   return (
     <TransactionsProvider>
       <ExpenseModalProvider>
-        <div className="min-h-screen bg-zinc-950">
+        <div className={`min-h-screen ${isDashboard ? "bg-gray-50" : "bg-zinc-950"}`}>
         {isLoggedIn && (
           <>
             <Sidebar />

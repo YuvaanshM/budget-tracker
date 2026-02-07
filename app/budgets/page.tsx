@@ -79,7 +79,7 @@ export default function BudgetsPage() {
                 <ProgressCard
                   key={b.id}
                   budget={b}
-                  onEdit={() => setBudgetToEdit({ id: b.id, category: b.category, budgetLimit: b.budgetLimit, alertsEnabled: b.alertsEnabled })}
+                  onEdit={() => setBudgetToEdit({ id: b.id, category: b.category, budgetLimit: b.budgetLimit, alertsEnabled: b.alertsEnabled ?? false })}
                 />
               ))}
             </div>

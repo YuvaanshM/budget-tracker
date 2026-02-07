@@ -13,12 +13,12 @@ import {
   YAxis,
 } from "recharts";
 import { useTransactions } from "@/context/TransactionsContext";
+import { getSpendingTrendDataForRange } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/formatCurrency";
 import {
   getMonthlyExpensesTotal,
   getMonthlyIncomeTotal,
   getSpendingByCategory,
-  getSpendingTrendData,
   type Transaction,
 } from "@/lib/mockData";
 
@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const remainingBudget = totalIncome - totalExpenses;
   const hasData = transactions.length > 0;
 
-  const spendingTrend = getSpendingTrendData(transactions);
+  const spendingTrend = getSpendingTrendDataForRange(transactions, "month");
   const spendingByCategory = getSpendingByCategory(transactions);
   const recentTransactions = [...transactions]
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -95,7 +95,7 @@ export default function DashboardPage() {
         {/* Middle Row: Charts – 60% Area, 40% Donut */}
         <section className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-3">
-            <ChartCard title="Spending trends (30 days)" type="area">
+            <ChartCard title="Spending over time (past 30 days)" type="area">
               {hasData ? (
                 <ResponsiveContainer width="100%" height={240}>
                   <AreaChart
@@ -214,10 +214,12 @@ function SummaryCard({
 function ChartCard({
   title,
   type,
+  rightElement,
   children,
 }: {
   title: string;
   type: "area" | "donut";
+  rightElement?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -225,7 +227,10 @@ function ChartCard({
       className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4 transition-[transform,border-color] hover:scale-[1.02] hover:border-white/20"
       aria-label={`${type} chart: ${title}`}
     >
-      <h2 className="text-sm font-medium text-zinc-400 mb-4">{title}</h2>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium text-zinc-400">{title}</h2>
+        {rightElement}
+      </div>
       {children}
     </div>
   );

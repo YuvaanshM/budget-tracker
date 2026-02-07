@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
 import { getCategoryIcon, type Transaction } from "@/lib/mockData";
 
+export type { Transaction } from "@/lib/mockData";
+
 export type ExpenseRow = {
   id: string;
   user_id: string;

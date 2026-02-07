@@ -1,6 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+
 export default function SettingsPage() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 p-6 md:p-8">
       <div className="mx-auto max-w-2xl space-y-8">
@@ -90,6 +101,23 @@ export default function SettingsPage() {
                 <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-zinc-400 transition-transform" />
               </button>
             </div>
+          </div>
+        </section>
+
+        {/* Account Section */}
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
+          <h2 className="text-lg font-medium text-zinc-100">Account</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Sign out of your account on this device
+          </p>
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50"
+            >
+              Log out
+            </button>
           </div>
         </section>
 

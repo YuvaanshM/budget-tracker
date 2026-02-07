@@ -25,7 +25,11 @@ Run the migrations in your Supabase project. In the [Supabase SQL Editor](https:
 
 - `supabase/migrations/001_create_budgets.sql`
 
-### 4. Run the app
+### 4. (Optional) Budget alert emails
+
+To send email notifications when budgets hit 50%, 90%, or 100%, see [docs/BUDGET_ALERTS_EMAIL_SETUP.md](docs/BUDGET_ALERTS_EMAIL_SETUP.md).
+
+### 5. Run the app
 
 ```bash
 npm run dev

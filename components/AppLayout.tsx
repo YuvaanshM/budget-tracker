@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { BudgetAlertsProvider } from "@/context/BudgetAlertsContext";
 import { ExpenseModalProvider } from "@/context/ExpenseModalContext";
 import { TransactionsProvider } from "@/context/TransactionsContext";
 import { AddExpenseModal } from "./AddExpenseModal";
@@ -31,6 +32,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <TransactionsProvider>
+      <BudgetAlertsProvider>
       <ExpenseModalProvider>
         <div className={`min-h-screen ${useLightTheme ? "bg-gray-50" : "bg-zinc-950"}`}>
         {isLoggedIn && (
@@ -51,6 +53,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <AddExpenseModal />
     </ExpenseModalProvider>
+    </BudgetAlertsProvider>
     </TransactionsProvider>
   );
 }

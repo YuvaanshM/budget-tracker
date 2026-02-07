@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
+import { useBudgetAlerts, getThresholdMessage } from "@/context/BudgetAlertsContext";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 /**
  * Desktop header: notifications, help, profile (top-right).
@@ -15,6 +17,13 @@ export function Header() {
   );
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const { alerts, dismissAlert, unreadCount } = useBudgetAlerts();
+
+  const getThresholdColor = (threshold: 50 | 90 | 100) => {
+    if (threshold === 50) return "bg-amber-500";
+    if (threshold === 90) return "bg-orange-500";
+    return "bg-red-500";
+  };
 
   const headerClass = useLightTheme
     ? "hidden md:flex sticky top-0 z-10 h-14 items-center justify-end gap-1 border-b border-gray-200 bg-white/95 px-4 backdrop-blur-md"
@@ -27,7 +36,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => setNotificationsOpen((o) => !o)}
-          className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 ${
+          className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus:outline-none focus:ring-2 ${
             useLightTheme
               ? "text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300"
               : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100 focus:ring-white/20"
@@ -36,6 +45,11 @@ export function Header() {
           aria-expanded={notificationsOpen}
         >
           <BellIcon className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
         {notificationsOpen && (
           <>
@@ -45,13 +59,47 @@ export function Header() {
               onClick={() => setNotificationsOpen(false)}
             />
             <div
-              className={`absolute right-0 top-full z-10 mt-1 w-72 rounded-xl py-2 shadow-xl backdrop-blur-md ${
+              className={`absolute right-0 top-full z-10 mt-1 w-80 max-h-96 overflow-y-auto rounded-xl py-2 shadow-xl backdrop-blur-md ${
                 useLightTheme ? "border border-gray-200 bg-white/95" : "border border-white/10 bg-zinc-900/95"
               }`}
             >
               <p className={`px-4 py-2 text-xs font-medium uppercase tracking-wider ${useLightTheme ? "text-gray-500" : "text-zinc-500"}`}>
                 Budget alerts
               </p>
+              {alerts.length > 0 ? (
+                <ul className={`text-sm ${useLightTheme ? "text-gray-600" : "text-zinc-300"}`}>
+                  {alerts.map((a) => (
+                    <li
+                      key={a.id}
+                      className={`group flex items-start gap-2 px-4 py-2.5 ${useLightTheme ? "hover:bg-gray-50" : "hover:bg-white/5"}`}
+                    >
+                      <span
+                        className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${getThresholdColor(a.threshold)}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium ${useLightTheme ? "text-gray-900" : "text-zinc-100"}`}>
+                          {a.category} — {a.threshold}%
+                        </p>
+                        <p className={`text-xs ${useLightTheme ? "text-gray-500" : "text-zinc-500"}`}>
+                          {getThresholdMessage(a.threshold)}. {formatCurrency(a.currentSpent)} of {formatCurrency(a.budgetLimit)} spent.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => dismissAlert(a.id)}
+                        className={`shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 ${
+                          useLightTheme
+                            ? "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                            : "text-zinc-500 hover:bg-white/10 hover:text-zinc-300"
+                        }`}
+                        aria-label="Dismiss"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
               <ul className={`text-sm ${useLightTheme ? "text-gray-600" : "text-zinc-300"}`}>
                 <li className="flex items-start gap-2 px-4 py-2">
                   <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
@@ -66,8 +114,11 @@ export function Header() {
                   <span>100% — Budget limit reached</span>
                 </li>
               </ul>
+              )}
               <p className={`border-t px-4 pt-2 text-xs ${useLightTheme ? "border-gray-200 text-gray-500" : "border-white/10 text-zinc-500"}`}>
-                You’ll see alerts here when categories hit these levels.
+                {alerts.length > 0
+                  ? "Alerts appear here when you hit 50%, 90%, or 100% of a budget."
+                  : "You'll see alerts here when categories hit these levels."}
               </p>
             </div>
           </>

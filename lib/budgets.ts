@@ -52,6 +52,19 @@ export async function createBudget(
     .select("id, user_id, category, budget_limit, created_at")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    const msg = error.message;
+    if (msg?.includes("does not exist") || msg?.includes("relation")) {
+      throw new Error(
+        "Budgets table not found. Run the migration in Supabase SQL Editor: supabase/migrations/001_create_budgets.sql"
+      );
+    }
+    if (msg?.includes("row-level security") || msg?.includes("policy")) {
+      throw new Error(
+        "Access denied. Make sure you're signed in and the budgets table has the correct RLS policies."
+      );
+    }
+    throw new Error(msg || "Failed to create budget");
+  }
   return toBudget(data);
 }

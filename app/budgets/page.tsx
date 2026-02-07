@@ -211,7 +211,8 @@ function CreateBudgetModal({
         budgetLimit: num,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create budget");
+      const msg = e instanceof Error ? e.message : "Failed to create budget";
+      setError(msg);
     } finally {
       setSaving(false);
     }

@@ -1,10 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const [email, setEmail] = useState<string>("");
+
+  useEffect(() => {
+    async function loadUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.email) setEmail(user.email);
+    }
+    loadUser();
+  }, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -47,7 +59,7 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
-            {/* Email Update - Placeholder */}
+            {/* Email – read-only, shows logged-in account email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-zinc-400">
                 Email
@@ -55,9 +67,14 @@ export default function SettingsPage() {
               <input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                value={email}
+                readOnly
+                placeholder="Not signed in"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder:text-zinc-500 read-only:cursor-default read-only:opacity-90 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
               />
+              <p className="mt-1 text-xs text-zinc-500">
+                Email for this account (read-only)
+              </p>
             </div>
           </div>
         </section>

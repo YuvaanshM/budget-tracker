@@ -26,7 +26,7 @@ export function BottomNav() {
             key={href}
             href={href}
             className={`flex flex-col items-center gap-1 rounded-xl px-4 py-2 transition-colors ${
-              isActive ? "text-zinc-50" : "text-zinc-500 hover:text-zinc-300"
+              isActive ? "text-[#2E8B57]" : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Icon className={`h-6 w-6 ${isActive ? "opacity-100" : "opacity-70"}`} />

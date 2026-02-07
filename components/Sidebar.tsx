@@ -45,7 +45,7 @@ export function Sidebar() {
                 href={href}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors xl:px-3 ${
                   isActive
-                    ? "bg-white/10 text-zinc-50"
+                    ? "bg-[#2E8B57] text-white"
                     : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                 }`}
               >
@@ -63,7 +63,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={openAddModal}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 text-white transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-zinc-900 xl:h-11 xl:w-11"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2E8B57] text-white transition-transform hover:scale-105 hover:bg-[#247a4a] focus:outline-none focus:ring-2 focus:ring-[#2E8B57] focus:ring-offset-2 focus:ring-offset-zinc-900 xl:h-11 xl:w-11"
             aria-label="Add transaction"
           >
             <PlusIcon className="h-5 w-5 xl:h-6 xl:w-6" />

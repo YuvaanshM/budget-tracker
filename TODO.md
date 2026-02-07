@@ -32,11 +32,11 @@
 - [ ] Create Register page UI
 
 ### 2. Global Layout & Navigation
-- [ ] Implement fixed left sidebar (desktop)
-  - [ ] Icons only on smaller desktops, icons + labels on large screens
-- [ ] Implement bottom tab bar (mobile): Home, History, Budgets, Settings
-- [ ] Apply theme: Sleto glassmorphic dark
-  - [ ] 1px borders (`border-white/10`), `backdrop-blur-md`, 16px border-radius
+- [x] Implement fixed left sidebar (desktop)
+  - [x] Icons only on smaller desktops, icons + labels on large screens
+- [x] Implement bottom tab bar (mobile): Home, History, Budgets, Settings
+- [x] Apply theme: Sleto glassmorphic dark
+  - [x] 1px borders (`border-white/10`), `backdrop-blur-md`, 16px border-radius
 - [ ] Add Framer Motion base (page transitions, hover states)
 
 ---

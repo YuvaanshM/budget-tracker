@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { BudgetAlertsProvider } from "@/context/BudgetAlertsContext";
 import { ExpenseModalProvider } from "@/context/ExpenseModalContext";
+import { RoomsProvider } from "@/context/RoomsContext";
 import { TransactionsProvider } from "@/context/TransactionsContext";
 import { AddExpenseModal } from "./AddExpenseModal";
 import { BottomNav } from "./BottomNav";
@@ -10,8 +11,8 @@ import { FABMobile } from "./FAB";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 
-const AUTHENTICATED_PATHS = ["/dashboard", "/analytics", "/history", "/budgets", "/settings", "/help"];
-const LIGHT_THEME_PATHS = ["/dashboard", "/analytics", "/history", "/budgets", "/settings"];
+const AUTHENTICATED_PATHS = ["/dashboard", "/analytics", "/history", "/budgets", "/rooms", "/settings", "/help"];
+const LIGHT_THEME_PATHS = ["/dashboard", "/analytics", "/history", "/budgets", "/rooms", "/settings"];
 
 function isAuthenticatedPath(pathname: string) {
   return AUTHENTICATED_PATHS.some(
@@ -33,6 +34,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <TransactionsProvider>
       <BudgetAlertsProvider>
+      <RoomsProvider>
       <ExpenseModalProvider>
         <div className={`min-h-screen ${useLightTheme ? "bg-gray-50" : "bg-zinc-950"}`}>
         {isLoggedIn && (
@@ -53,6 +55,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <AddExpenseModal />
     </ExpenseModalProvider>
+    </RoomsProvider>
     </BudgetAlertsProvider>
     </TransactionsProvider>
   );

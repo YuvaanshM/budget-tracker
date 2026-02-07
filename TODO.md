@@ -87,14 +87,14 @@
 ## Phase 3: Budgets & Configuration
 
 ### 6. Budgets & Alerts
-- [ ] Grid of progress cards
-  - [ ] Category name (top left), $ remaining (top right)
-  - [ ] Progress bar: green < 50%, yellow 50–80%, red > 80%
-  - [ ] Pulse animation when budget exceeded
-- [ ] "Create New Budget" button → modal
-  - [ ] Link category to monthly limit
-  - [ ] Prevent budget limit < 0
-- [ ] Real-time category totals vs budget
+- [x] Grid of progress cards
+  - [x] Category name (top left), $ remaining (top right)
+  - [x] Progress bar: green < 50%, yellow 50–80%, red > 80%
+  - [x] Pulse animation when budget exceeded
+- [x] "Create New Budget" button → modal
+  - [x] Link category to monthly limit
+  - [x] Prevent budget limit < 0
+- [x] Real-time category totals vs budget
 
 ### 7. Settings & Profile
 - [ ] Profile section: avatar upload, email update

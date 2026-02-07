@@ -58,3 +58,47 @@ export function getSpendingByCategory(transactions: Transaction[]): { name: stri
   }
   return Array.from(byCategory.entries()).map(([name, value]) => ({ name, value }));
 }
+
+/** Budget type – links category to monthly limit */
+export type Budget = {
+  id: string;
+  category: string;
+  budgetLimit: number;
+};
+
+/** Mock budgets */
+export const MOCK_BUDGETS: Budget[] = [
+  { id: "b1", category: "Groceries", budgetLimit: 400 },
+  { id: "b2", category: "Restaurants", budgetLimit: 150 },
+  { id: "b3", category: "Transport", budgetLimit: 200 },
+  { id: "b4", category: "Entertainment", budgetLimit: 100 },
+  { id: "b5", category: "Utilities", budgetLimit: 250 },
+];
+
+/** Get spending per category for current month */
+function getMonthlySpendingByCategory(transactions: Transaction[], yearMonth: string): Map<string, number> {
+  const byCategory = new Map<string, number>();
+  for (const t of transactions) {
+    if (!t.isIncome && t.date.startsWith(yearMonth)) {
+      const v = byCategory.get(t.category) ?? 0;
+      byCategory.set(t.category, v + Math.abs(t.amount));
+    }
+  }
+  return byCategory;
+}
+
+/** Budget with computed current spent (for current month) */
+export type BudgetWithSpent = Budget & { currentSpent: number };
+
+export function getBudgetsWithSpent(
+  transactions: Transaction[],
+  budgets: Budget[],
+  yearMonth?: string
+): BudgetWithSpent[] {
+  const ym = yearMonth ?? new Date().toISOString().slice(0, 7);
+  const spentByCategory = getMonthlySpendingByCategory(transactions, ym);
+  return budgets.map((b) => ({
+    ...b,
+    currentSpent: spentByCategory.get(b.category) ?? 0,
+  }));
+}

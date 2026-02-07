@@ -1,0 +1,14 @@
+---
+description: Budget app development workflow - work from TODO list
+alwaysApply: true
+---
+
+# Budget App Development Workflow
+
+When the user asks to develop or implement features for this budget app:
+
+1. **Read TODO.md** (project root) first.
+2. Work from the list in dependency order (Phase 1 → 2 → 3 → 4 → 5).
+3. Mark completed tasks as `[x]` and in-progress tasks as `[~]` in TODO.md.
+4. Reference PRD.md and DesignDoc.md (project root) for specifications.
+5. Skip optional features (Phase 5) unless explicitly requested.

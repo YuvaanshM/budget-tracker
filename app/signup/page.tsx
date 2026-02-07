@@ -106,7 +106,7 @@ export default function SignUpPage() {
           </div>
           <div>
             <label htmlFor="password" className={labelClass}>
-              Password (minimum 9 characters)
+              Password (minimum 8 characters)
             </label>
             <input
               id="password"
@@ -117,7 +117,7 @@ export default function SignUpPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={9}
+              minLength={8}
               className={inputClass}
             />
           </div>

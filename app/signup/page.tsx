@@ -16,6 +16,7 @@ const labelClass =
   "block text-xs font-medium uppercase tracking-wider text-zinc-500 mb-2";
 
 export default function SignUpPage() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,6 +27,11 @@ export default function SignUpPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      setError("Please choose a username");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -39,7 +45,10 @@ export default function SignUpPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: redirectTo },
+        options: {
+          emailRedirectTo: redirectTo,
+          data: { username: trimmedUsername },
+        },
       });
       if (error) {
         const isRateLimit =
@@ -58,6 +67,7 @@ export default function SignUpPage() {
           {
             id: data.user.id,
             email: data.user.email ?? email,
+            username: trimmedUsername,
             income: 0,
             created_at: new Date().toISOString(),
           },
@@ -88,6 +98,22 @@ export default function SignUpPage() {
               {error}
             </p>
           )}
+          <div>
+            <label htmlFor="username" className={labelClass}>
+              Username *
+            </label>
+            <input
+              id="username"
+              type="text"
+              name="username"
+              autoComplete="username"
+              placeholder="Choose a username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className={inputClass}
+            />
+          </div>
           <div>
             <label htmlFor="email" className={labelClass}>
               Email

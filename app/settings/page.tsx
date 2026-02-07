@@ -7,13 +7,27 @@ import { supabase } from "@/lib/supabaseClient";
 export default function SettingsPage() {
   const router = useRouter();
   const [email, setEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [usernameEdit, setUsernameEdit] = useState<string>("");
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadUser() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user?.email) setEmail(user.email);
+      if (!user) return;
+      if (user.email) setEmail(user.email);
+      // Prefer users table, fallback to user_metadata
+      const { data: row } = await supabase
+        .from("users")
+        .select("username")
+        .eq("id", user.id)
+        .single();
+      const name = (row?.username as string) || (user.user_metadata?.username as string) || "";
+      setUsername(name);
+      setUsernameEdit(name);
     }
     loadUser();
   }, []);
@@ -22,6 +36,54 @@ export default function SettingsPage() {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  }
+
+  async function handleUpdateUsername(e: React.FormEvent) {
+    e.preventDefault();
+    setUsernameError(null);
+    const newUsername = usernameEdit.trim();
+    if (!newUsername) {
+      setUsernameError("Username cannot be empty");
+      return;
+    }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setUsernameError("Please sign in to update your username");
+      return;
+    }
+    setUsernameSaving(true);
+    try {
+      const { data: available, error: rpcError } = await supabase.rpc("check_username_available", {
+        p_username: newUsername,
+        p_user_id: user.id,
+      });
+      if (rpcError) {
+        setUsernameError(rpcError.message || "Could not check username");
+        return;
+      }
+      if (available !== true) {
+        setUsernameError("That username is already taken. Please choose another.");
+        return;
+      }
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ username: newUsername })
+        .eq("id", user.id);
+      if (updateError) {
+        if (updateError.code === "23505") {
+          setUsernameError("That username is already taken. Please choose another.");
+          return;
+        }
+        setUsernameError(updateError.message || "Could not update username");
+        return;
+      }
+      await supabase.auth.updateUser({ data: { username: newUsername } });
+      setUsername(newUsername);
+    } finally {
+      setUsernameSaving(false);
+    }
   }
 
   return (
@@ -39,27 +101,39 @@ export default function SettingsPage() {
         <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
           <h2 className="text-lg font-medium text-zinc-100">Profile</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Update your profile picture and email
+            Your account details
           </p>
           <div className="mt-6 space-y-4">
-            {/* Avatar Upload - Placeholder */}
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5">
-                <span className="text-2xl text-zinc-500">?</span>
-              </div>
-              <div>
+            {/* Username – editable with update button */}
+            <form onSubmit={handleUpdateUsername}>
+              <label htmlFor="username" className="block text-sm font-medium text-zinc-400">
+                Username
+              </label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  id="username"
+                  type="text"
+                  value={usernameEdit}
+                  onChange={(e) => setUsernameEdit(e.target.value)}
+                  placeholder="Choose a username"
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-zinc-100 placeholder:text-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
+                />
                 <button
-                  type="button"
-                  className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-50"
+                  type="submit"
+                  disabled={usernameSaving || usernameEdit.trim() === username}
+                  className="shrink-0 rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-medium text-zinc-200 transition-colors hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Upload Avatar
+                  {usernameSaving ? "Saving…" : "Update"}
                 </button>
-                <p className="mt-1 text-xs text-zinc-500">
-                  PNG, JPG up to 2MB
-                </p>
               </div>
-            </div>
-            {/* Email – read-only, shows logged-in account email */}
+              {usernameError && (
+                <p className="mt-1 text-xs text-red-400">{usernameError}</p>
+              )}
+              <p className="mt-1 text-xs text-zinc-500">
+                Usernames must be unique. You can change yours here.
+              </p>
+            </form>
+            {/* Email – read-only */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-zinc-400">
                 Email

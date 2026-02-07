@@ -24,6 +24,16 @@ function getDefaultDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Normalize to YYYY-MM-DD for inputs and API; fallback to today if invalid. */
+function toDateOnly(s: string | undefined): string {
+  if (!s || !s.trim()) return getDefaultDate();
+  const trimmed = s.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const t = Date.parse(trimmed);
+  if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+  return getDefaultDate();
+}
+
 export function AddExpenseModal() {
   const { isOpen, mode, initialData, closeModal } = useExpenseModal();
   const amountRef = useRef<HTMLInputElement>(null);
@@ -48,6 +58,7 @@ export function AddExpenseModal() {
         setFormData({
           ...initialData,
           amount: initialData.amount,
+          date: toDateOnly(initialData.date),
         });
       } else {
         setFormData({
@@ -90,7 +101,9 @@ export function AddExpenseModal() {
       if (!formData.category.trim()) {
         next.category = "Category is required";
       }
-      if (formData.date && isNaN(Date.parse(formData.date))) {
+      if (!formData.date?.trim()) {
+        next.date = "Date is required";
+      } else if (Number.isNaN(Date.parse(formData.date.trim()))) {
         next.date = "Invalid date";
       }
     }
@@ -119,7 +132,7 @@ export function AddExpenseModal() {
     const date =
       formData.isIncome && formData.incomeType !== "one_time"
         ? getDefaultDate()
-        : formData.date;
+        : toDateOnly(formData.date);
     let err: Error | null = null;
     if (formData.isIncome) {
       const incomeType = formData.incomeType ?? "one_time";

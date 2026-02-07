@@ -8,15 +8,24 @@ export type ExpenseRow = {
   category: string | null;
   subcategory: string | null;
   description: string | null;
-  date: string;
+  date: string | null;
   created_at?: string;
 };
+
+function normalizeDateFromApi(value: string | null | undefined): string {
+  if (value == null || value === "") return new Date().toISOString().slice(0, 10);
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const t = Date.parse(s);
+  if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
+}
 
 export function mapExpenseRowToTransaction(row: ExpenseRow): Transaction {
   const category = row.category ?? "Other";
   return {
     id: row.id,
-    date: row.date,
+    date: normalizeDateFromApi(row.date),
     category,
     categoryIcon: getCategoryIcon(category, false),
     description: row.description ?? "",
@@ -47,14 +56,23 @@ export type InsertExpense = {
   date: string;
 };
 
+function toISODateOnly(s: string): string {
+  const trimmed = s?.trim() ?? "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const t = Date.parse(trimmed);
+  if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10);
+}
+
 export async function insertExpense(row: InsertExpense): Promise<{ error: Error | null }> {
+  const date = toISODateOnly(row.date);
   const { error } = await supabase.from("expenses").insert({
     user_id: row.user_id,
     amount: Math.abs(row.amount),
     category: row.category ?? "Other",
     subcategory: row.subcategory ?? "",
     description: row.description ?? "",
-    date: row.date,
+    date,
   });
   return { error: error ?? null };
 }
@@ -71,6 +89,7 @@ export async function updateExpense(
   id: string,
   row: UpdateExpense
 ): Promise<{ error: Error | null }> {
+  const date = toISODateOnly(row.date);
   const { error } = await supabase
     .from("expenses")
     .update({
@@ -78,8 +97,13 @@ export async function updateExpense(
       category: row.category ?? "Other",
       subcategory: row.subcategory ?? "",
       description: row.description ?? "",
-      date: row.date,
+      date,
     })
     .eq("id", id);
+  return { error: error ?? null };
+}
+
+export async function deleteExpense(id: string): Promise<{ error: Error | null }> {
+  const { error } = await supabase.from("expenses").delete().eq("id", id);
   return { error: error ?? null };
 }

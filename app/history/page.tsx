@@ -3,26 +3,41 @@
 import { useState } from "react";
 import { useExpenseModal, type ExpenseFormData } from "@/context/ExpenseModalContext";
 import { useTransactions } from "@/context/TransactionsContext";
+import { deleteIncome } from "@/lib/income";
+import { deleteExpense } from "@/lib/transactions";
 import { type Transaction } from "@/lib/mockData";
 
 function formatDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const s = (iso ?? "").trim();
+  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(s)
+    ? s
+    : Number.isNaN(Date.parse(s))
+      ? new Date().toISOString().slice(0, 10)
+      : new Date(s).toISOString().slice(0, 10);
+  const d = new Date(ymd + "T12:00:00");
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 const FILTER_PILLS = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 
 export default function ExpenseHistoryPage() {
-  const { transactions, loading, error } = useTransactions();
+  const { transactions, loading, error, refetch } = useTransactions();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof FILTER_PILLS)[number]>("Monthly");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { openEditModal } = useExpenseModal();
+
+  const toDateOnly = (s: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(s?.trim() ?? "")
+      ? s.trim()
+      : Number.isNaN(Date.parse(s ?? ""))
+        ? new Date().toISOString().slice(0, 10)
+        : new Date(s).toISOString().slice(0, 10);
 
   const transactionToFormData = (tx: Transaction): ExpenseFormData => ({
     id: tx.id,
@@ -30,7 +45,7 @@ export default function ExpenseHistoryPage() {
     category: tx.category,
     subcategory: "",
     description: tx.description,
-    date: tx.date,
+    date: toDateOnly(tx.date),
     isIncome: tx.isIncome,
     incomeType: tx.incomeType,
   });
@@ -47,8 +62,18 @@ export default function ExpenseHistoryPage() {
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = () => {
-    console.log("Delete transaction:", selectedTransaction?.id);
+  const confirmDelete = async () => {
+    if (!selectedTransaction) return;
+    setDeleteError(null);
+    const isIncome = selectedTransaction.source === "income" || selectedTransaction.isIncome;
+    const result = isIncome
+      ? await deleteIncome(selectedTransaction.id)
+      : await deleteExpense(selectedTransaction.id);
+    if (result.error) {
+      setDeleteError(result.error.message);
+      return;
+    }
+    await refetch();
     setShowDeleteConfirm(false);
     setIsDrawerOpen(false);
     setSelectedTransaction(null);
@@ -63,6 +88,7 @@ export default function ExpenseHistoryPage() {
     setIsDrawerOpen(false);
     setSelectedTransaction(null);
     setShowDeleteConfirm(false);
+    setDeleteError(null);
   };
 
   if (loading) {
@@ -269,16 +295,19 @@ export default function ExpenseHistoryPage() {
                       Delete
                     </button>
                   </div>
-                  {/* Delete confirmation skeleton */}
+                  {/* Delete confirmation */}
                   {showDeleteConfirm && (
                     <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
                       <p className="text-sm text-zinc-300">
                         Are you sure you want to delete this transaction?
                       </p>
+                      {deleteError && (
+                        <p className="mt-2 text-sm text-red-400">{deleteError}</p>
+                      )}
                       <div className="mt-3 flex gap-2">
                         <button
                           type="button"
-                          onClick={() => setShowDeleteConfirm(false)}
+                          onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
                           className="flex-1 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-300"
                         >
                           Cancel

@@ -19,15 +19,19 @@ export function Sidebar() {
       aria-label="Main navigation"
     >
       <div className="flex w-16 flex-col gap-1 p-3 xl:w-56 xl:px-4 xl:py-5">
-        {/* Logo / Brand - compact on small, full on large */}
-        <div className="mb-4 flex items-center gap-2 px-1 py-2 xl:px-2">
+        {/* Logo / Brand - compact on small, full on large; links to dashboard (app home) */}
+        <Link
+          href="/dashboard"
+          className="mb-4 flex items-center gap-2 rounded-xl px-1 py-2 transition-colors hover:bg-white/5 xl:px-2"
+          aria-label="Go to dashboard"
+        >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-lg">
             💰
           </span>
           <span className="hidden text-sm font-semibold text-zinc-100 xl:inline">
             Budget
           </span>
-        </div>
+        </Link>
 
         <nav className="flex flex-1 flex-col gap-1">
           {NAV_ITEMS.map(({ href, label, icon: Icon }) => {

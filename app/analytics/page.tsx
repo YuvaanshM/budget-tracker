@@ -151,8 +151,6 @@ export default function AnalyticsPage() {
                   tick={{ fill: "#6b7280", fontSize: 11 }}
                   axisLine={{ stroke: "#e5e7eb" }}
                   tickLine={false}
-                  angle={-35}
-                  textAnchor="end"
                   height={56}
                 />
                 <YAxis
@@ -219,8 +217,6 @@ export default function AnalyticsPage() {
                   tick={{ fill: "#6b7280", fontSize: 11 }}
                   axisLine={{ stroke: "#e5e7eb" }}
                   tickLine={false}
-                  angle={-35}
-                  textAnchor="end"
                   height={56}
                 />
                 <YAxis

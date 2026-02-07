@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useExpenseModal, type ExpenseFormData } from "@/context/ExpenseModalContext";
-import { MOCK_TRANSACTIONS, type Transaction } from "@/lib/mockData";
+import { type Transaction } from "@/lib/mockData";
 
 function formatDate(iso: string) {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
@@ -15,6 +15,7 @@ function formatDate(iso: string) {
 const FILTER_PILLS = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 
 export default function ExpenseHistoryPage() {
+  const transactions: Transaction[] = [];
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof FILTER_PILLS)[number]>("Monthly");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -127,7 +128,7 @@ export default function ExpenseHistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_TRANSACTIONS.map((tx) => (
+                {transactions.map((tx) => (
                   <tr
                     key={tx.id}
                     onClick={() => handleRowClick(tx)}
@@ -156,7 +157,7 @@ export default function ExpenseHistoryPage() {
 
           {/* Mobile: Card-based list */}
           <div className="md:hidden divide-y divide-white/5">
-            {MOCK_TRANSACTIONS.map((tx) => (
+            {transactions.map((tx) => (
               <button
                 key={tx.id}
                 type="button"

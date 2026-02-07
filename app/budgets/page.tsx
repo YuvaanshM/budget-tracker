@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { formatCurrency } from "@/lib/formatCurrency";
 import {
-  MOCK_BUDGETS,
-  MOCK_TRANSACTIONS,
   getBudgetsWithSpent,
   type Budget,
   type BudgetWithSpent,
@@ -22,10 +20,10 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = useState<Budget[]>(MOCK_BUDGETS);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const budgetsWithSpent = getBudgetsWithSpent(MOCK_TRANSACTIONS, budgets);
+  const budgetsWithSpent = getBudgetsWithSpent([], budgets);
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 md:p-8">

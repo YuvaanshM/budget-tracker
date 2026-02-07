@@ -14,7 +14,6 @@ import {
 } from "recharts";
 import { formatCurrency } from "@/lib/formatCurrency";
 import {
-  MOCK_TRANSACTIONS,
   getSpendingByCategory,
   getSpendingTrendData,
   type Transaction,
@@ -37,7 +36,7 @@ function formatDate(iso: string) {
 }
 
 export default function DashboardPage() {
-  const transactions = MOCK_TRANSACTIONS;
+  const transactions: Transaction[] = [];
   const hasData = transactions.length > 0;
 
   const totalIncome = transactions

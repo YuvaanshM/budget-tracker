@@ -57,8 +57,8 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Add transaction – bottom right of sidebar */}
-        <div className="mt-auto flex justify-end pb-2 xl:pb-3">
+        {/* Add transaction – bottom left of sidebar */}
+        <div className="mt-auto flex justify-start pb-2 xl:pb-3">
           <button
             type="button"
             onClick={openAddModal}

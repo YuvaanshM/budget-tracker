@@ -311,3 +311,210 @@ export async function deleteSharedExpense(id: string): Promise<{ error: Error | 
   const { error } = await supabase.from("shared_expenses").delete().eq("id", id);
   return { error: error ?? null };
 }
+
+// --- Room budgets (category '' = general) ---
+export type RoomBudget = {
+  id: string;
+  roomId: string;
+  category: string;
+  budgetLimit: number;
+};
+
+export async function fetchRoomBudgets(roomId: string): Promise<RoomBudget[]> {
+  const { data, error } = await supabase
+    .from("room_budgets")
+    .select("id, room_id, category, budget_limit")
+    .eq("room_id", roomId);
+
+  if (error || !data) return [];
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    roomId: r.room_id,
+    category: r.category ?? "",
+    budgetLimit: Number(r.budget_limit),
+  }));
+}
+
+export async function upsertRoomBudget(
+  roomId: string,
+  budgetLimit: number,
+  category: string = ""
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase
+    .from("room_budgets")
+    .upsert(
+      {
+        room_id: roomId,
+        category: category ?? "",
+        budget_limit: Math.abs(budgetLimit),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "room_id,category" }
+    );
+  return { error: error ?? null };
+}
+
+// --- Settlements (settle up / paid) ---
+export type Settlement = {
+  id: string;
+  roomId: string;
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+  createdAt: string;
+};
+
+export async function fetchSettlements(roomId: string): Promise<Settlement[]> {
+  const { data, error } = await supabase
+    .from("settlements")
+    .select("id, room_id, from_user_id, to_user_id, amount, created_at")
+    .eq("room_id", roomId)
+    .order("created_at", { ascending: false });
+
+  if (error) return [];
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    roomId: r.room_id,
+    fromUserId: r.from_user_id,
+    toUserId: r.to_user_id,
+    amount: Number(r.amount),
+    createdAt: r.created_at ?? "",
+  }));
+}
+
+export async function insertSettlement(
+  roomId: string,
+  fromUserId: string,
+  toUserId: string,
+  amount: number
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.from("settlements").insert({
+    room_id: roomId,
+    from_user_id: fromUserId,
+    to_user_id: toUserId,
+    amount: Math.abs(amount),
+  });
+  return { error: error ?? null };
+}
+
+/** Fetch display names via RPC (bypasses RLS - users can only read own row) */
+export async function fetchMemberDisplayNames(userIds: string[]): Promise<Record<string, string>> {
+  if (userIds.length === 0) return {};
+  const { data, error } = await supabase.rpc("get_member_display_names", {
+    p_user_ids: userIds,
+  });
+  if (error || !Array.isArray(data)) return {};
+  const map: Record<string, string> = {};
+  for (const r of data as { user_id: string; display_name: string }[]) {
+    map[r.user_id] = r.display_name?.trim() || "Member";
+  }
+  return map;
+}
+
+export async function fetchExpenseSplitsForRoom(roomId: string): Promise<ExpenseSplit[]> {
+  const { data: expenseIds } = await supabase
+    .from("shared_expenses")
+    .select("id")
+    .eq("room_id", roomId);
+  const ids = (expenseIds ?? []).map((e) => e.id);
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("expense_splits")
+    .select("shared_expense_id, user_id, amount")
+    .in("shared_expense_id", ids);
+  if (error) return [];
+  return (data ?? []).map((r) => ({
+    sharedExpenseId: r.shared_expense_id,
+    userId: r.user_id,
+    amount: Number(r.amount),
+  }));
+}
+
+/** Compute total amount owed per user across all room expenses (for "who owes how much" chart). */
+export function computeOwedPerUser(
+  expenses: SharedExpense[],
+  members: RoomMember[],
+  splits: ExpenseSplit[],
+  displayNames: Record<string, string>,
+  currentUserId: string
+): { userId: string; amount: number; displayName: string }[] {
+  const owed = new Map<string, number>();
+  for (const m of members) {
+    owed.set(m.userId, 0);
+  }
+  const splitsByExpense = new Map<string, ExpenseSplit[]>();
+  for (const s of splits) {
+    const list = splitsByExpense.get(s.sharedExpenseId) ?? [];
+    list.push(s);
+    splitsByExpense.set(s.sharedExpenseId, list);
+  }
+  for (const exp of expenses) {
+    const memberCount = members.length;
+    if (exp.splitType === "full") {
+      owed.set(exp.paidBy, (owed.get(exp.paidBy) ?? 0) + exp.amount);
+    } else if (exp.splitType === "equal" && memberCount > 0) {
+      const perPerson = exp.amount / memberCount;
+      for (const m of members) {
+        owed.set(m.userId, (owed.get(m.userId) ?? 0) + perPerson);
+      }
+    } else if (exp.splitType === "custom") {
+      const customSplits = splitsByExpense.get(exp.id) ?? [];
+      for (const s of customSplits) {
+        owed.set(s.userId, (owed.get(s.userId) ?? 0) + s.amount);
+      }
+    }
+  }
+  return Array.from(owed.entries()).map(([userId, amount]) => ({
+    userId,
+    amount,
+    displayName: userId === currentUserId ? "You" : (displayNames[userId] ?? "Member"),
+  }));
+}
+
+/** Who the current user owes (breakdown by creditor), minus settlements. */
+export function computeOwedToEach(
+  expenses: SharedExpense[],
+  members: RoomMember[],
+  splits: ExpenseSplit[],
+  settlements: Settlement[],
+  displayNames: Record<string, string>,
+  currentUserId: string
+): { toUserId: string; amount: number; displayName: string }[] {
+  const owedTo = new Map<string, number>();
+  const splitsByExpense = new Map<string, ExpenseSplit[]>();
+  for (const s of splits) {
+    const list = splitsByExpense.get(s.sharedExpenseId) ?? [];
+    list.push(s);
+    splitsByExpense.set(s.sharedExpenseId, list);
+  }
+  for (const exp of expenses) {
+    const memberCount = members.length;
+    const paidBy = exp.paidBy;
+    if (paidBy === currentUserId) continue; // don't owe yourself
+    let myShare = 0;
+    if (exp.splitType === "full") {
+      myShare = 0;
+    } else if (exp.splitType === "equal" && memberCount > 0) {
+      myShare = exp.amount / memberCount;
+    } else if (exp.splitType === "custom") {
+      const customSplits = splitsByExpense.get(exp.id) ?? [];
+      myShare = customSplits.find((s) => s.userId === currentUserId)?.amount ?? 0;
+    }
+    if (myShare > 0) {
+      owedTo.set(paidBy, (owedTo.get(paidBy) ?? 0) + myShare);
+    }
+  }
+  // Subtract settlements: when current user paid someone
+  for (const s of settlements) {
+    if (s.fromUserId === currentUserId && s.toUserId !== currentUserId) {
+      owedTo.set(s.toUserId, Math.max(0, (owedTo.get(s.toUserId) ?? 0) - s.amount));
+    }
+  }
+  return Array.from(owedTo.entries())
+    .filter(([, amount]) => amount > 0)
+    .map(([toUserId, amount]) => ({
+      toUserId,
+      amount,
+      displayName: toUserId === currentUserId ? "You" : (displayNames[toUserId] ?? "Member"),
+    }));
+}

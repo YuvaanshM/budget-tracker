@@ -3,12 +3,18 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
-  fetchRoomsForUser,
+  fetchExpenseSplitsForRoom,
   fetchRoomById,
+  fetchRoomBudgets,
   fetchRoomMembers,
+  fetchRoomsForUser,
   fetchSharedExpenses,
+  fetchSettlements,
+  type ExpenseSplit,
   type Room,
+  type RoomBudget,
   type RoomMember,
+  type Settlement,
   type SharedExpense,
 } from "@/lib/rooms";
 
@@ -23,6 +29,9 @@ type ActiveRoomContextType = {
   room: Room | null;
   members: RoomMember[];
   expenses: SharedExpense[];
+  roomBudgets: RoomBudget[];
+  splits: ExpenseSplit[];
+  settlements: Settlement[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -96,6 +105,9 @@ export function ActiveRoomProvider({
   const [room, setRoom] = useState<Room | null>(null);
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [expenses, setExpenses] = useState<SharedExpense[]>([]);
+  const [roomBudgets, setRoomBudgets] = useState<RoomBudget[]>([]);
+  const [splits, setSplits] = useState<ExpenseSplit[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,25 +116,38 @@ export function ActiveRoomProvider({
       setRoom(null);
       setMembers([]);
       setExpenses([]);
+      setRoomBudgets([]);
+      setSplits([]);
+      setSettlements([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const [roomData, membersData, expensesData] = await Promise.all([
-        fetchRoomById(roomId),
-        fetchRoomMembers(roomId),
-        fetchSharedExpenses(roomId),
-      ]);
+      const [roomData, membersData, expensesData, budgetsData, splitsData, settlementsData] =
+        await Promise.all([
+          fetchRoomById(roomId),
+          fetchRoomMembers(roomId),
+          fetchSharedExpenses(roomId),
+          fetchRoomBudgets(roomId),
+          fetchExpenseSplitsForRoom(roomId),
+          fetchSettlements(roomId),
+        ]);
       setRoom(roomData ?? null);
       setMembers(membersData);
       setExpenses(expensesData);
+      setRoomBudgets(budgetsData);
+      setSplits(splitsData);
+      setSettlements(settlementsData);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load room");
       setRoom(null);
       setMembers([]);
       setExpenses([]);
+      setRoomBudgets([]);
+      setSplits([]);
+      setSettlements([]);
     } finally {
       setLoading(false);
     }
@@ -158,9 +183,27 @@ export function ActiveRoomProvider({
           table: "room_members",
           filter: `room_id=eq.${roomId}`,
         },
-        () => {
-          refetch();
-        }
+        () => refetch()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "settlements",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => refetch()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "room_budgets",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => refetch()
       )
       .subscribe();
 
@@ -173,6 +216,9 @@ export function ActiveRoomProvider({
     room,
     members,
     expenses,
+    roomBudgets,
+    splits,
+    settlements,
     loading,
     error,
     refetch,

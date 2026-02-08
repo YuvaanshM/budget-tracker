@@ -3,6 +3,15 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 import { formatCurrency } from "@/lib/formatCurrency";
 import {
@@ -10,11 +19,13 @@ import {
   useActiveRoom,
 } from "@/context/RoomsContext";
 import {
-  addRoomMember,
+  computeOwedToEach,
   deleteRoom,
-  findUserByUsername,
+  fetchMemberDisplayNames,
+  upsertRoomBudget,
 } from "@/lib/rooms";
 import { AddRoomExpenseModal } from "@/components/AddRoomExpenseModal";
+import { SettleUpModal } from "@/components/SettleUpModal";
 
 const CATEGORY_ICONS: Record<string, string> = {
   Groceries: "🛒",
@@ -27,25 +38,57 @@ const CATEGORY_ICONS: Record<string, string> = {
   Other: "📦",
 };
 
+const EXPENSE_CATEGORIES = [
+  "Groceries",
+  "Restaurants",
+  "Transport",
+  "Entertainment",
+  "Utilities",
+  "Shopping",
+  "Healthcare",
+  "Other",
+];
+
+const ACCENT_GREEN = "#2E8B57";
+const CHART_COLORS = [
+  ACCENT_GREEN,
+  "#059669",
+  "#0d9488",
+  "#047857",
+  "#065f46",
+  "#134e4a",
+  "#15803d",
+  "#166534",
+];
+
 function RoomDetailContent() {
   const params = useParams();
   const router = useRouter();
   const roomId = params?.id as string;
-  const { room, members, expenses, loading, error, refetch } = useActiveRoom();
+  const { room, members, expenses, roomBudgets, splits, settlements, loading, error, refetch } =
+    useActiveRoom();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [memberDisplayNames, setMemberDisplayNames] = useState<Record<string, string>>({});
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
-  const [inviteUsername, setInviteUsername] = useState("");
-  const [inviteSubmitting, setInviteSubmitting] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [showInvite, setShowInvite] = useState(false);
+  const [isSettleUpOpen, setIsSettleUpOpen] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showBudgetForm, setShowBudgetForm] = useState(false);
+  const [budgetCategory, setBudgetCategory] = useState<string>("");
+  const [budgetLimit, setBudgetLimit] = useState("");
+  const [budgetSubmitting, setBudgetSubmitting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUserId(user?.id ?? null);
     });
   }, []);
+
+  useEffect(() => {
+    if (members.length > 0) {
+      fetchMemberDisplayNames(members.map((m) => m.userId)).then(setMemberDisplayNames);
+    }
+  }, [members]);
 
   const isOwner = room && currentUserId && room.createdBy === currentUserId;
 
@@ -61,31 +104,19 @@ function RoomDetailContent() {
     router.push("/rooms");
   };
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleSaveBudget = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data: { user: u } } = await supabase.auth.getUser();
-    if (!u || !roomId) return;
-    if (!inviteUsername.trim()) {
-      setInviteError("Enter a username");
-      return;
+    const num = parseFloat(budgetLimit);
+    if (isNaN(num) || num < 0) return;
+    setBudgetSubmitting(true);
+    const { error: err } = await upsertRoomBudget(roomId, num, budgetCategory);
+    setBudgetSubmitting(false);
+    if (!err) {
+      setShowBudgetForm(false);
+      setBudgetLimit("");
+      setBudgetCategory("");
+      await refetch();
     }
-    setInviteSubmitting(true);
-    setInviteError(null);
-    const found = await findUserByUsername(inviteUsername.trim());
-    if (!found) {
-      setInviteError("User not found. They need to set a username in Settings.");
-      setInviteSubmitting(false);
-      return;
-    }
-    const { error: err } = await addRoomMember(roomId, found.id, "member");
-    setInviteSubmitting(false);
-    if (err) {
-      setInviteError(err.message);
-      return;
-    }
-    setInviteUsername("");
-    setShowInvite(false);
-    await refetch();
   };
 
   if (loading && !room) {
@@ -112,6 +143,27 @@ function RoomDetailContent() {
   }
 
   const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const owedToEach = currentUserId
+    ? computeOwedToEach(expenses, members, splits, settlements, memberDisplayNames, currentUserId)
+    : [];
+  const youOwe = owedToEach.reduce((sum, o) => sum + o.amount, 0);
+
+  // Spending by category
+  const spendingByCategory = expenses.reduce<Record<string, number>>((acc, exp) => {
+    acc[exp.category] = (acc[exp.category] ?? 0) + exp.amount;
+    return acc;
+  }, {});
+  const categoryChartData = Object.entries(spendingByCategory).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
+  const memberNamesForTooltip = members
+    .map((m) => (m.userId === currentUserId ? "You" : memberDisplayNames[m.userId] ?? "Member"))
+    .join(", ");
+
+  const generalBudget = roomBudgets.find((b) => b.category === "");
+  const categoryBudgets = roomBudgets.filter((b) => b.category !== "");
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -127,7 +179,13 @@ function RoomDetailContent() {
           <div className="flex-1">
             <h1 className="text-2xl font-semibold text-gray-900">{room.name}</h1>
             <p className="text-sm text-gray-500">
-              Code: {room.inviteCode} · {members.length} member{members.length !== 1 ? "s" : ""}
+              Code: {room.inviteCode} ·{" "}
+              <span
+                className="cursor-help underline decoration-dotted"
+                title={memberNamesForTooltip || undefined}
+              >
+                {members.length} member{members.length !== 1 ? "s" : ""}
+              </span>
             </p>
           </div>
           <div className="flex gap-2">
@@ -173,39 +231,102 @@ function RoomDetailContent() {
           </div>
         </div>
 
-        {/* Invite */}
-        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        {/* Summary: Total + You owe */}
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="text-sm font-medium text-gray-500">Total shared expenses</h2>
+            <p className="mt-1 text-2xl font-semibold text-gray-900">
+              {formatCurrency(totalSpent)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-medium text-gray-500">What you owe</h2>
+                <p className="mt-1 text-2xl font-semibold text-gray-900">
+                  {formatCurrency(youOwe)}
+                </p>
+              </div>
+              {youOwe > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsSettleUpOpen(true)}
+                  className="rounded-lg bg-[#2E8B57] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#247a4a]"
+                >
+                  Settle Up
+                </button>
+              )}
+            </div>
+            {/* Breakdown: how much you owe to each person */}
+            {owedToEach.length > 0 && (
+              <div className="mt-3 border-t border-gray-100 pt-3">
+                <p className="mb-2 text-xs font-medium text-gray-500">Owed to each person:</p>
+                <ul className="space-y-1 text-sm text-gray-600">
+                  {owedToEach.map((o) => (
+                    <li key={o.toUserId} className="flex justify-between">
+                      <span>{o.displayName}</span>
+                      <span>{formatCurrency(o.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Room Budgets (general + category) */}
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Invite by username</span>
-            {!showInvite ? (
+            <h2 className="text-sm font-medium text-gray-700">Room Budgets</h2>
+            {!showBudgetForm ? (
               <button
                 type="button"
-                onClick={() => setShowInvite(true)}
+                onClick={() => {
+                  setShowBudgetForm(true);
+                  setBudgetCategory("");
+                  setBudgetLimit(generalBudget?.budgetLimit?.toString() ?? "");
+                }}
                 className="text-sm text-[#2E8B57] hover:underline"
               >
-                Invite
+                Add Budget
               </button>
             ) : (
-              <form onSubmit={handleInvite} className="flex gap-2">
+              <form onSubmit={handleSaveBudget} className="flex flex-wrap items-center gap-2">
+                <select
+                  value={budgetCategory}
+                  onChange={(e) => setBudgetCategory(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-[#2E8B57] focus:outline-none focus:ring-1 focus:ring-[#2E8B57]"
+                >
+                  <option value="">General (total)</option>
+                  {EXPENSE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
                 <input
-                  type="text"
-                  value={inviteUsername}
-                  onChange={(e) => setInviteUsername(e.target.value)}
-                  placeholder="Username"
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-[#2E8B57] focus:outline-none focus:ring-1 focus:ring-[#2E8B57]"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="Limit"
+                  value={budgetLimit}
+                  onChange={(e) => setBudgetLimit(e.target.value)}
+                  className="w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-[#2E8B57] focus:outline-none focus:ring-1 focus:ring-[#2E8B57]"
                 />
                 <button
                   type="submit"
-                  disabled={inviteSubmitting}
+                  disabled={budgetSubmitting}
                   className="rounded-lg bg-[#2E8B57] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#247a4a] disabled:opacity-70"
                 >
-                  {inviteSubmitting ? "…" : "Add"}
+                  Save
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setShowInvite(false);
-                    setInviteError(null);
+                    setShowBudgetForm(false);
+                    setBudgetLimit("");
+                    setBudgetCategory("");
                   }}
                   className="rounded-lg px-2 text-sm text-gray-500 hover:bg-gray-100"
                 >
@@ -214,18 +335,59 @@ function RoomDetailContent() {
               </form>
             )}
           </div>
-          {inviteError && (
-            <p className="mt-2 text-sm text-red-500">{inviteError}</p>
-          )}
+          <div className="mt-4 space-y-3">
+            {generalBudget && (
+              <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                <span className="font-medium text-gray-700">General</span>
+                <span className="text-gray-600">
+                  {formatCurrency(totalSpent)} / {formatCurrency(generalBudget.budgetLimit)}
+                  {generalBudget.budgetLimit > 0 &&
+                    ` (${Math.round((totalSpent / generalBudget.budgetLimit) * 100)}%)`}
+                </span>
+              </div>
+            )}
+            {categoryBudgets.map((b) => {
+              const spent = spendingByCategory[b.category] ?? 0;
+              return (
+                <div
+                  key={b.id}
+                  className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"
+                >
+                  <span className="font-medium text-gray-700">{b.category}</span>
+                  <span className="text-gray-600">
+                    {formatCurrency(spent)} / {formatCurrency(b.budgetLimit)}
+                    {b.budgetLimit > 0 &&
+                      ` (${Math.round((spent / b.budgetLimit) * 100)}%)`}
+                  </span>
+                </div>
+              );
+            })}
+            {roomBudgets.length === 0 && !showBudgetForm && (
+              <p className="text-sm text-gray-500">No budgets set. Add a general or category budget.</p>
+            )}
+          </div>
         </div>
 
-        {/* Summary */}
-        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-medium text-gray-500">Total shared expenses</h2>
-          <p className="mt-1 text-2xl font-semibold text-gray-900">
-            {formatCurrency(totalSpent)}
-          </p>
-        </div>
+        {/* Spending by category */}
+        {categoryChartData.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-medium text-gray-700">Spending by category</h2>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
+                  <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {categoryChartData.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {/* Expenses list */}
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -273,6 +435,19 @@ function RoomDetailContent() {
           onClose={() => setIsAddExpenseOpen(false)}
           onSaved={() => {
             setIsAddExpenseOpen(false);
+            refetch();
+          }}
+        />
+      )}
+
+      {isSettleUpOpen && currentUserId && (
+        <SettleUpModal
+          roomId={roomId}
+          currentUserId={currentUserId}
+          owedTo={owedToEach}
+          onClose={() => setIsSettleUpOpen(false)}
+          onSaved={() => {
+            setIsSettleUpOpen(false);
             refetch();
           }}
         />

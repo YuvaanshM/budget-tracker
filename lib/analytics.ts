@@ -156,11 +156,12 @@ export function getSpendingTrendDataForRange(
   return points.reverse();
 }
 
-/** Savings rate for a month: (income - expenses) / income * 100; null if no income */
+/** Savings rate for a month: (income - expenses) / income * 100. Returns null only when income is 0 or invalid. */
 export function getSavingsRatePercent(
   income: number,
   expenses: number
 ): number | null {
-  if (income <= 0) return null;
-  return Math.round(((income - expenses) / income) * 1000) / 10;
+  if (income == null || income <= 0 || !Number.isFinite(income)) return null;
+  const rate = ((income - expenses) / income) * 100;
+  return Number.isFinite(rate) ? Math.round(rate * 10) / 10 : null;
 }

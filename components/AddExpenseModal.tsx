@@ -26,6 +26,17 @@ function getDefaultDate() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Sanitize amount input: digits and one ".", max 2 digits after decimal. Cents only allowed after "." */
+function sanitizeAmountInput(value: string): string {
+  if (value === "") return "";
+  const cleaned = value.replace(/[^\d.]/g, "");
+  const dotIndex = cleaned.indexOf(".");
+  if (dotIndex === -1) return cleaned;
+  const beforeDot = cleaned.slice(0, dotIndex);
+  const afterDot = cleaned.slice(dotIndex + 1).slice(0, 2);
+  return afterDot === "" ? beforeDot + "." : beforeDot + "." + afterDot;
+}
+
 /** Normalize to YYYY-MM-DD for inputs and API; fallback to today if invalid. */
 function toDateOnly(s: string | undefined): string {
   if (!s || !s.trim()) return getDefaultDate();
@@ -268,7 +279,7 @@ export function AddExpenseModal() {
               inputMode="decimal"
               placeholder="0.00"
               value={formData.amount}
-              onChange={(e) => handleChange("amount", e.target.value)}
+              onChange={(e) => handleChange("amount", sanitizeAmountInput(e.target.value))}
               className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xl font-semibold tabular-nums text-zinc-100 placeholder-zinc-500 focus:border-white/20 focus:outline-none focus:ring-1 focus:ring-white/20"
             />
             {errors.amount && (

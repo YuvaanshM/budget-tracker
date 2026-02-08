@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { useTransactions } from "@/context/TransactionsContext";
+import { useBudgetAlerts } from "@/context/BudgetAlertsContext";
 import { getSpendingTrendDataForRange } from "@/lib/analytics";
 import { formatCurrency } from "@/lib/formatCurrency";
 import {
@@ -75,19 +76,19 @@ export default function DashboardPage() {
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <SummaryCard
             label="Total Income"
-            value={formatCurrency(totalIncome)}
+            value={formatCurrency(totalIncome, { exact: true })}
             valueColor="text-[#2E8B57]"
             ariaLabel="Total income"
           />
           <SummaryCard
             label="Total Expenses"
-            value={formatCurrency(totalExpenses)}
+            value={formatCurrency(totalExpenses, { exact: true })}
             valueColor="text-red-500"
             ariaLabel="Total expenses"
           />
           <SummaryCard
             label="Remaining Budget"
-            value={formatCurrency(remainingBudget)}
+            value={formatCurrency(remainingBudget, { exact: true })}
             valueColor={remainingBudget >= 0 ? "text-gray-900" : "text-red-500"}
             ariaLabel="Remaining budget"
           />
@@ -246,17 +247,40 @@ function EmptyChartPlaceholder({ message }: { message: string }) {
 }
 
 function AlertsCard() {
+  const { budgetsPast50 } = useBudgetAlerts();
   return (
     <div
       className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-[transform,border-color] hover:scale-[1.02] hover:border-gray-300"
-      aria-label="Upcoming bills and budget alerts"
+      aria-label="Upcoming budgets and alerts"
     >
       <h2 className="text-sm font-medium text-gray-600 mb-4">
-        Upcoming Bills / Budget Alerts
+        Upcoming Budgets and Alerts
       </h2>
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-center text-sm text-gray-500">
-        No upcoming bills or budget alerts
-      </div>
+      {budgetsPast50.length > 0 ? (
+        <div className="space-y-2">
+          {budgetsPast50.map((a) => (
+            <div
+              key={a.id}
+              className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${
+                a.threshold >= 100
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : a.threshold >= 90
+                    ? "border-orange-200 bg-orange-50 text-orange-700"
+                    : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}
+            >
+              <span className="font-medium">{a.category}</span>
+              <span>
+                {formatCurrency(a.currentSpent, { exact: true })} / {formatCurrency(a.budgetLimit, { exact: true })} ({Math.round(a.percentUsed)}%)
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-center text-sm text-gray-500">
+          No budgets past 50%. Alerts appear here when categories hit 50%, 90%, or 100%.
+        </div>
+      )}
     </div>
   );
 }

@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useExpenseModal, type ExpenseFormData } from "@/context/ExpenseModalContext";
 import { useTransactions } from "@/context/TransactionsContext";
 import { deleteIncome } from "@/lib/income";
 import { deleteExpense } from "@/lib/transactions";
+import { formatCurrency } from "@/lib/formatCurrency";
 import { type Transaction } from "@/lib/mockData";
+
+const SECTIONS_PER_PAGE = 6;
+const FILTER_PILLS = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
+type FilterMode = (typeof FILTER_PILLS)[number];
 
 function formatDate(iso: string) {
   const s = (iso ?? "").trim();
@@ -20,65 +25,111 @@ function formatDate(iso: string) {
     : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Parse transaction date string to start-of-day timestamp (local) for range checks */
-function getTxDateMs(tx: Transaction): number {
-  const s = (tx.date ?? "").trim();
-  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(s)
-    ? s
-    : Number.isNaN(Date.parse(s))
+function toDateOnly(s: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s?.trim() ?? "")
+    ? s.trim()
+    : Number.isNaN(Date.parse(s ?? ""))
       ? new Date().toISOString().slice(0, 10)
       : new Date(s).toISOString().slice(0, 10);
-  return new Date(ymd + "T00:00:00").getTime();
 }
 
-function getRangeForFilter(
-  filter: "Daily" | "Weekly" | "Monthly" | "Yearly"
-): { startMs: number; endMs: number } {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const endOfToday = startOfToday + 24 * 60 * 60 * 1000 - 1;
+/** Get Monday (start of week) for a given date string */
+function getWeekKey(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday = 1
+  const mon = new Date(d.setDate(diff));
+  return mon.toISOString().slice(0, 10);
+}
 
-  switch (filter) {
-    case "Daily":
-      return { startMs: startOfToday, endMs: endOfToday };
-    case "Weekly": {
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - 6);
-      const start = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate()).getTime();
-      return { startMs: start, endMs: endOfToday };
+function formatWeekTitle(weekKey: string): string {
+  const d = new Date(weekKey + "T12:00:00");
+  return "Week of " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatMonthTitle(yearMonth: string): string {
+  const [y, m] = yearMonth.split("-");
+  const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+export type GroupedSection = {
+  key: string;
+  title: string;
+  transactions: Transaction[];
+  totalExpenses: number;
+  totalIncome: number;
+};
+
+function groupTransactions(
+  transactions: Transaction[],
+  filter: FilterMode
+): GroupedSection[] {
+  const searchable = transactions;
+  const byKey = new Map<string, Transaction[]>();
+
+  for (const tx of searchable) {
+    const dateStr = toDateOnly(tx.date);
+    let key: string;
+    switch (filter) {
+      case "Daily":
+        key = dateStr;
+        break;
+      case "Weekly":
+        key = getWeekKey(dateStr);
+        break;
+      case "Monthly":
+        key = dateStr.slice(0, 7); // YYYY-MM
+        break;
+      case "Yearly":
+        key = dateStr.slice(0, 4); // YYYY
+        break;
     }
-    case "Monthly": {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth(), lastDay.getDate(), 23, 59, 59, 999).getTime();
-      return { startMs: startOfMonth, endMs: endOfMonth };
-    }
-    case "Yearly": {
-      const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
-      const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime();
-      return { startMs: startOfYear, endMs: endOfYear };
-    }
+    const list = byKey.get(key) ?? [];
+    list.push(tx);
+    byKey.set(key, list);
   }
-}
 
-const FILTER_PILLS = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
+  const sections: GroupedSection[] = [];
+  for (const [key, txs] of byKey.entries()) {
+    const sorted = [...txs].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
+    let totalExpenses = 0;
+    let totalIncome = 0;
+    for (const t of sorted) {
+      if (t.isIncome) totalIncome += t.amount;
+      else totalExpenses += Math.abs(t.amount);
+    }
+    let title: string;
+    switch (filter) {
+      case "Daily":
+        title = formatDate(key);
+        break;
+      case "Weekly":
+        title = formatWeekTitle(key);
+        break;
+      case "Monthly":
+        title = formatMonthTitle(key);
+        break;
+      case "Yearly":
+        title = key;
+        break;
+    }
+    sections.push({ key, title, transactions: sorted, totalExpenses, totalIncome });
+  }
+  sections.sort((a, b) => (b.key > a.key ? 1 : b.key < a.key ? -1 : 0));
+  return sections;
+}
 
 export default function ExpenseHistoryPage() {
   const { transactions, loading, error, refetch } = useTransactions();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<(typeof FILTER_PILLS)[number]>("Monthly");
+  const [activeFilter, setActiveFilter] = useState<FilterMode>("Monthly");
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
   const { openEditModal } = useExpenseModal();
-
-  const toDateOnly = (s: string) =>
-    /^\d{4}-\d{2}-\d{2}$/.test(s?.trim() ?? "")
-      ? s.trim()
-      : Number.isNaN(Date.parse(s ?? ""))
-        ? new Date().toISOString().slice(0, 10)
-        : new Date(s).toISOString().slice(0, 10);
 
   const transactionToFormData = (tx: Transaction): ExpenseFormData => ({
     id: tx.id,
@@ -99,9 +150,7 @@ export default function ExpenseHistoryPage() {
     }
   };
 
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
+  const handleDeleteClick = () => setShowDeleteConfirm(true);
 
   const confirmDelete = async () => {
     if (!selectedTransaction) return;
@@ -120,8 +169,8 @@ export default function ExpenseHistoryPage() {
     setSelectedTransaction(null);
   };
 
-  const handleRowClick = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
+  const handleRowClick = (tx: Transaction) => {
+    setSelectedTransaction(tx);
     setIsDrawerOpen(true);
   };
 
@@ -133,14 +182,31 @@ export default function ExpenseHistoryPage() {
   };
 
   const searchTerm = searchQuery.trim().toLowerCase();
-  const { startMs, endMs } = getRangeForFilter(activeFilter);
+  const filteredTransactions = useMemo(
+    () =>
+      searchTerm === ""
+        ? transactions
+        : transactions.filter((t) =>
+            (t.description ?? "").toLowerCase().includes(searchTerm)
+          ),
+    [transactions, searchTerm]
+  );
 
-  const filteredTransactions = transactions.filter((tx) => {
-    const txMs = getTxDateMs(tx);
-    if (txMs < startMs || txMs > endMs) return false;
-    if (searchTerm === "") return true;
-    return (tx.description ?? "").toLowerCase().includes(searchTerm);
-  });
+  const sections = useMemo(
+    () => groupTransactions(filteredTransactions, activeFilter),
+    [filteredTransactions, activeFilter]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sections.length / SECTIONS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages - 1);
+  const startIdx = safePage * SECTIONS_PER_PAGE;
+  const visibleSections = sections.slice(startIdx, startIdx + SECTIONS_PER_PAGE);
+
+  const handleFilterChange = (filter: FilterMode) => {
+    setActiveFilter(filter);
+    setCurrentPage(0);
+  };
+
 
   if (loading) {
     return (
@@ -160,7 +226,6 @@ export default function ExpenseHistoryPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-8">
       <div className="mx-auto max-w-5xl">
-        {/* Page Header */}
         <header>
           <h1 className="text-2xl font-semibold text-gray-900">Expense History</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -168,7 +233,6 @@ export default function ExpenseHistoryPage() {
           </p>
         </header>
 
-        {/* Search + Filter Pills */}
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1">
             <input
@@ -187,7 +251,7 @@ export default function ExpenseHistoryPage() {
               <button
                 key={pill}
                 type="button"
-                onClick={() => setActiveFilter(pill)}
+                onClick={() => handleFilterChange(pill)}
                 className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
                   activeFilter === pill
                     ? "border-[#2E8B57] bg-[#2E8B57] text-white"
@@ -200,86 +264,124 @@ export default function ExpenseHistoryPage() {
           </div>
         </div>
 
-        {/* Table (Desktop) / Cards (Mobile) */}
-        <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          {/* Desktop: Table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Category
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Description
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((tx) => (
-                  <tr
-                    key={tx.id}
-                    onClick={() => handleRowClick(tx)}
-                    className="cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50 last:border-b-0"
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-600">{formatDate(tx.date)}</td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-2 text-sm text-gray-700">
-                        <span>{tx.categoryIcon}</span>
-                        {tx.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{tx.description}</td>
-                    <td
-                      className={`px-6 py-4 text-right text-sm font-medium ${
-                        tx.isIncome ? "text-[#2E8B57]" : "text-red-500"
-                      }`}
-                    >
-                      {tx.isIncome ? "+" : ""}${Math.abs(tx.amount).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile: Card-based list */}
-          <div className="md:hidden divide-y divide-gray-100">
-            {filteredTransactions.map((tx) => (
-              <button
-                key={tx.id}
-                type="button"
-                onClick={() => handleRowClick(tx)}
-                className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-gray-50"
+        {/* Grouped sections with pagination */}
+        <div className="mt-6 space-y-4">
+          {visibleSections.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-gray-500 shadow-sm">
+              No transactions found
+            </div>
+          ) : (
+            visibleSections.map((section) => (
+              <section
+                key={section.key}
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
               >
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="text-xl">{tx.categoryIcon}</span>
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-gray-900">{tx.description}</p>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(tx.date)} · {tx.category}
-                    </p>
+                <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                  <h2 className="text-sm font-semibold text-gray-900">
+                    {activeFilter === "Yearly" ? `${section.title} – Total for year` : section.title}
+                  </h2>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Expenses: {formatCurrency(section.totalExpenses, { exact: true })}
+                    {section.totalIncome > 0 && (
+                      <> · Income: {formatCurrency(section.totalIncome, { exact: true })}</>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  {/* Desktop: table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full">
+                      <tbody>
+                        {section.transactions.map((tx) => (
+                          <tr
+                            key={tx.id}
+                            onClick={() => handleRowClick(tx)}
+                            className="cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50 last:border-b-0"
+                          >
+                            <td className="px-6 py-4 text-sm text-gray-600">{formatDate(tx.date)}</td>
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center gap-2 text-sm text-gray-700">
+                                <span>{tx.categoryIcon}</span>
+                                {tx.category}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">{tx.description}</td>
+                            <td
+                              className={`px-6 py-4 text-right text-sm font-medium ${
+                                tx.isIncome ? "text-[#2E8B57]" : "text-red-500"
+                              }`}
+                            >
+                              {tx.isIncome ? "+" : ""}
+                              {formatCurrency(Math.abs(tx.amount), { exact: true })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Mobile: cards */}
+                  <div className="md:hidden divide-y divide-gray-100">
+                    {section.transactions.map((tx) => (
+                      <button
+                        key={tx.id}
+                        type="button"
+                        onClick={() => handleRowClick(tx)}
+                        className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-gray-50"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <span className="text-xl">{tx.categoryIcon}</span>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-gray-900">{tx.description}</p>
+                            <p className="text-sm text-gray-500">
+                              {formatDate(tx.date)} · {tx.category}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`shrink-0 font-medium ${
+                            tx.isIncome ? "text-[#2E8B57]" : "text-red-500"
+                          }`}
+                        >
+                          {tx.isIncome ? "+" : ""}
+                          {formatCurrency(Math.abs(tx.amount), { exact: true })}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <span
-                  className={`shrink-0 font-medium ${
-                    tx.isIncome ? "text-[#2E8B57]" : "text-red-500"
-                  }`}
-                >
-                  {tx.isIncome ? "+" : ""}${Math.abs(tx.amount).toFixed(2)}
-                </span>
+              </section>
+            ))
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 py-4">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                disabled={safePage === 0}
+                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Previous page"
+              >
+                ← Previous
               </button>
-            ))}
-          </div>
+              <span className="text-sm text-gray-600">
+                Page {safePage + 1} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={safePage >= totalPages - 1}
+                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Next page"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Slide-over Drawer (Edit/Delete) */}
+        {/* Slide-over Drawer */}
         {isDrawerOpen && (
           <>
             <div
@@ -322,8 +424,8 @@ export default function ExpenseHistoryPage() {
                         selectedTransaction.isIncome ? "text-[#2E8B57]" : "text-red-500"
                       }`}
                     >
-                      {selectedTransaction.isIncome ? "+" : ""}$
-                      {Math.abs(selectedTransaction.amount).toFixed(2)}
+                      {selectedTransaction.isIncome ? "+" : ""}
+                      {formatCurrency(Math.abs(selectedTransaction.amount), { exact: true })}
                     </p>
                   </div>
                   <div>
@@ -346,7 +448,6 @@ export default function ExpenseHistoryPage() {
                       Delete
                     </button>
                   </div>
-                  {/* Delete confirmation */}
                   {showDeleteConfirm && (
                     <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
                       <p className="text-sm text-gray-700">
@@ -358,7 +459,10 @@ export default function ExpenseHistoryPage() {
                       <div className="mt-3 flex gap-2">
                         <button
                           type="button"
-                          onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
+                          onClick={() => {
+                            setShowDeleteConfirm(false);
+                            setDeleteError(null);
+                          }}
                           className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           Cancel
@@ -382,3 +486,4 @@ export default function ExpenseHistoryPage() {
     </div>
   );
 }
+

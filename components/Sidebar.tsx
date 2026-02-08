@@ -33,7 +33,7 @@ export function Sidebar() {
             💰
           </span>
           <span className="hidden text-sm font-semibold text-zinc-100 xl:inline">
-            Budget
+            BudgetBase
           </span>
         </Link>
 

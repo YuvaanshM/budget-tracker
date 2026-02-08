@@ -26,16 +26,15 @@ import {
   getMonthlyIncomeTotal,
 } from "@/lib/mockData";
 
-const ACCENT_GREEN = "#2E8B57";
 const CHART_COLORS = [
-  ACCENT_GREEN,
-  "#059669",
-  "#0d9488",
-  "#047857",
-  "#065f46",
-  "#134e4a",
-  "#15803d",
-  "#166534",
+  "#2E8B57",  // green
+  "#3B82F6",  // blue
+  "#F59E0B",  // amber
+  "#8B5CF6",  // purple
+  "#EF4444",  // red
+  "#06B6D4",  // cyan
+  "#EC4899",  // pink
+  "#84CC16",  // lime
 ];
 
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
@@ -61,15 +60,23 @@ export default function AnalyticsPage() {
   const monthlyExpenses = getMonthlyExpensesTotal(transactions, currentMonth);
   const savingsRate = getSavingsRatePercent(monthlyIncome, monthlyExpenses);
 
-  const expenseBreakdown = getExpenseBreakdownByPeriod(
+  const expenseBreakdownRaw = getExpenseBreakdownByPeriod(
     transactions,
     breakdownPeriod
   );
-  const topSpending = getTopSpendingByPeriod(
+  const expenseBreakdown = expenseBreakdownRaw.map((item, i) => ({
+    ...item,
+    fill: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+  const topSpendingRaw = getTopSpendingByPeriod(
     transactions,
     topSpendingPeriod,
     8
   );
+  const topSpending = topSpendingRaw.map((item, i) => ({
+    ...item,
+    fill: CHART_COLORS[i % CHART_COLORS.length],
+  }));
   const spendingTrend = getSpendingTrendDataForRange(transactions, trendRange);
   const hasData = transactions.length > 0;
 
@@ -102,12 +109,12 @@ export default function AnalyticsPage() {
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <SummaryCard
             label="Monthly Income"
-            value={formatCurrency(monthlyIncome)}
+            value={formatCurrency(monthlyIncome, { exact: true })}
             valueColor="text-[#2E8B57]"
           />
           <SummaryCard
             label="Monthly Expenses"
-            value={formatCurrency(monthlyExpenses)}
+            value={formatCurrency(monthlyExpenses, { exact: true })}
             valueColor="text-amber-600"
           />
           <SummaryCard
@@ -141,7 +148,7 @@ export default function AnalyticsPage() {
             </select>
           </div>
           {expenseBreakdown.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={280} key={breakdownPeriod}>
               <BarChart
                 data={expenseBreakdown}
                 margin={{ top: 10, right: 10, left: 0, bottom: 24 }}
@@ -173,11 +180,8 @@ export default function AnalyticsPage() {
                   }}
                 />
                 <Bar dataKey="percent" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                  {expenseBreakdown.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                    />
+                  {expenseBreakdown.map((entry) => (
+                    <Cell key={entry.name} fill={entry.fill} />
                   ))}
                 </Bar>
               </BarChart>
@@ -207,7 +211,7 @@ export default function AnalyticsPage() {
             </select>
           </div>
           {topSpending.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height={280} key={topSpendingPeriod}>
               <BarChart
                 data={topSpending}
                 margin={{ top: 10, right: 10, left: 0, bottom: 24 }}
@@ -234,7 +238,11 @@ export default function AnalyticsPage() {
                   formatter={(value) => [formatCurrency(Number(value) || 0), "Spent"]}
                   labelFormatter={(name) => name}
                 />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="#2E8B57" />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                  {topSpending.map((entry) => (
+                    <Cell key={entry.name} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -308,18 +316,6 @@ export default function AnalyticsPage() {
           ) : (
             <EmptyChart message="No spending data yet" />
           )}
-        </section>
-
-        {/* Spending Insights placeholder */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-medium text-gray-600 mb-2">
-            Spending Insights
-          </h2>
-          <p className="text-sm text-gray-500">
-            Insights and recommendations will appear here in a future update.
-            You may see AI-generated summaries of your spending patterns or
-            suggestions to improve your budget.
-          </p>
         </section>
       </div>
     </div>

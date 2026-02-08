@@ -207,23 +207,6 @@ export default function SettingsPage() {
                 <option value="INR">INR (₹)</option>
               </select>
             </div>
-            {/* AI Auto-Categorization Toggle - Placeholder */}
-            <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div>
-                <p className="font-medium text-gray-900">AI Auto-Categorization</p>
-                <p className="text-sm text-gray-500">
-                  Automatically categorize transactions
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked="false"
-                className="relative h-6 w-11 shrink-0 rounded-full border border-gray-200 bg-gray-200 transition-colors"
-              >
-                <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-gray-400 transition-transform" />
-              </button>
-            </div>
           </div>
         </section>
 
@@ -296,7 +279,7 @@ export default function SettingsPage() {
           )}
           {wipeConfirm && (
             <p className="mt-3 text-sm text-red-700">
-              This will permanently delete all your expenses, income, budgets, room memberships, and rooms you created. This cannot be undone.
+              This will permanently delete all your expenses, income, budgets, and rooms you own. You will remain in rooms you joined. This cannot be undone.
             </p>
           )}
         </section>

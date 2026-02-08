@@ -166,7 +166,7 @@ function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () 
               remaining <= 0 ? "text-red-500" : "text-[#2E8B57]"
             }`}
           >
-            {remaining <= 0 ? "$0" : formatCurrency(remaining)} left
+            {remaining <= 0 ? "$0" : formatCurrency(remaining, { exact: true })} left
           </span>
           <button
             type="button"
@@ -186,7 +186,7 @@ function ProgressCard({ budget, onEdit }: { budget: BudgetWithSpent; onEdit: () 
       </div>
       <div className="mt-2 flex items-center justify-between">
         <p className="text-xs text-gray-500">
-          {formatCurrency(currentSpent)} of {formatCurrency(budgetLimit)} spent this month
+          {formatCurrency(currentSpent, { exact: true })} of {formatCurrency(budgetLimit, { exact: true })} spent this month
         </p>
         {alertsEnabled && (
           <span className="inline-flex items-center gap-1 text-xs text-gray-500" title="Alerts on">

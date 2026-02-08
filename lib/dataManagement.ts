@@ -28,7 +28,7 @@ export function exportTransactionsToCsv(transactions: Transaction[]): void {
   URL.revokeObjectURL(url);
 }
 
-/** Delete all user data: expenses, income, budgets, room memberships, settlements, rooms owned. */
+/** Delete all user data: expenses, income, budgets, and rooms owned. Does NOT leave rooms or delete room memberships. */
 export async function wipeAllUserData(userId: string): Promise<{ error: Error | null }> {
   try {
     // 1. Personal data
@@ -36,14 +36,7 @@ export async function wipeAllUserData(userId: string): Promise<{ error: Error | 
     await supabase.from("income").delete().eq("user_id", userId);
     await supabase.from("budgets").delete().eq("user_id", userId);
 
-    // 2. Leave all rooms (room_members)
-    await supabase.from("room_members").delete().eq("user_id", userId);
-
-    // 3. Delete settlements involving this user (in rooms they were in)
-    await supabase.from("settlements").delete().eq("from_user_id", userId);
-    await supabase.from("settlements").delete().eq("to_user_id", userId);
-
-    // 4. Delete rooms owned by user (cascades: room_members, shared_expenses, expense_splits, room_budgets, settlements for those rooms)
+    // 2. Delete only rooms owned by user (cascades: room_members, shared_expenses, expense_splits, room_budgets, settlements for those rooms)
     await supabase.from("rooms").delete().eq("created_by", userId);
 
     return { error: null };

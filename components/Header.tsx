@@ -12,7 +12,7 @@ import { formatCurrency } from "@/lib/formatCurrency";
  */
 export function Header() {
   const pathname = usePathname();
-  const useLightTheme = ["/dashboard", "/analytics", "/history", "/budgets", "/settings"].some(
+  const useLightTheme = ["/dashboard", "/analytics", "/history", "/budgets", "/rooms", "/settings"].some(
     (p) => pathname === p || (pathname ?? "").startsWith(p + "/")
   );
   const [notificationsOpen, setNotificationsOpen] = useState(false);

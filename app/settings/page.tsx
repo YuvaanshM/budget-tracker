@@ -3,14 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useTransactions } from "@/context/TransactionsContext";
+import { exportTransactionsToCsv, wipeAllUserData } from "@/lib/dataManagement";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { transactions, refetch: refetchTransactions } = useTransactions();
   const [email, setEmail] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [usernameEdit, setUsernameEdit] = useState<string>("");
   const [usernameSaving, setUsernameSaving] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [wipeConfirm, setWipeConfirm] = useState(false);
+  const [wipeSubmitting, setWipeSubmitting] = useState(false);
+  const [wipeError, setWipeError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -35,6 +41,32 @@ export default function SettingsPage() {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
+    router.refresh();
+  }
+
+  function handleExportCsv() {
+    exportTransactionsToCsv(transactions);
+  }
+
+  async function handleWipeAllData() {
+    if (!wipeConfirm) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setWipeError("Please sign in to wipe data");
+      return;
+    }
+    setWipeSubmitting(true);
+    setWipeError(null);
+    const { error } = await wipeAllUserData(user.id);
+    setWipeSubmitting(false);
+    if (error) {
+      setWipeError(error.message);
+      return;
+    }
+    setWipeConfirm(false);
+    await refetchTransactions();
     router.refresh();
   }
 
@@ -221,17 +253,52 @@ export default function SettingsPage() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
-              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              onClick={handleExportCsv}
+              disabled={transactions.length === 0}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Export to CSV
             </button>
-            <button
-              type="button"
-              className="rounded-xl border border-red-300 bg-red-100 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-200"
-            >
-              Wipe All Data
-            </button>
+            {!wipeConfirm ? (
+              <button
+                type="button"
+                onClick={() => setWipeConfirm(true)}
+                className="rounded-xl border border-red-300 bg-red-100 px-4 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-200"
+              >
+                Wipe All Data
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleWipeAllData}
+                  disabled={wipeSubmitting}
+                  className="rounded-xl border border-red-500 bg-red-500 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-70"
+                >
+                  {wipeSubmitting ? "Wiping…" : "Confirm Wipe"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWipeConfirm(false);
+                    setWipeError(null);
+                  }}
+                  disabled={wipeSubmitting}
+                  className="rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-70"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
+          {wipeError && (
+            <p className="mt-3 text-sm text-red-600">{wipeError}</p>
+          )}
+          {wipeConfirm && (
+            <p className="mt-3 text-sm text-red-700">
+              This will permanently delete all your expenses, income, budgets, room memberships, and rooms you created. This cannot be undone.
+            </p>
+          )}
         </section>
       </div>
     </div>

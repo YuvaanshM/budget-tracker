@@ -20,8 +20,10 @@ const EXPENSE_CATEGORIES = [
   "Other",
 ] as const;
 
+/** Today in local timezone (YYYY-MM-DD). Avoids UTC making it "tomorrow" in some timezones. */
 function getDefaultDate() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /** Normalize to YYYY-MM-DD for inputs and API; fallback to today if invalid. */
@@ -30,7 +32,10 @@ function toDateOnly(s: string | undefined): string {
   const trimmed = s.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
   const t = Date.parse(trimmed);
-  if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+  if (!Number.isNaN(t)) {
+    const d = new Date(t);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
   return getDefaultDate();
 }
 

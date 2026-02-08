@@ -27,8 +27,10 @@ type Props = {
   onSaved: () => void;
 };
 
+/** Today in local timezone (YYYY-MM-DD). Avoids UTC making it "tomorrow" in some timezones. */
 function getDefaultDate() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function AddRoomExpenseModal({ roomId, members, onClose, onSaved }: Props) {

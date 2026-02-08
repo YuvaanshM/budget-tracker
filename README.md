@@ -1,38 +1,55 @@
-# Budget Tracker
+# BudgetBase
 
-A budget tracking app built with Next.js, Supabase, and Tailwind.
+A personal finance app for tracking income, expenses, and budgets. Built for the hackathon.
 
-## Setup
+## Team Members
+- Yuvaansh Malhotra
+- Abhinav Kambhampaty
+- Shyleshh Kala Gopalakrishanan
 
-### 1. Install dependencies
+## Purpose
 
-```bash
-npm install
-```
+BudgetBase helps users:
 
-### 2. Environment variables
+- Track income and expenses
+- Set and monitor budgets by category
+- Get alerts at 50%, 90%, and 100% of budget
+- View analytics (spending trends, savings rate)
+- Share budgets with roommates
+- Export data to CSV
 
-Create `.env.local` in the project root with:
+## Tools Utilized
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
+- **Next.js 16** – React framework
+- **Supabase** – Auth, PostgreSQL, real-time
+- **Tailwind CSS** – Styling
+- **Recharts** – Charts and graphs
+- **Vercel** – Hosting
 
-### 3. Database schema
+## Problems & Solutions
 
-Run the migrations in your Supabase project. In the [Supabase SQL Editor](https://supabase.com/dashboard/project/_/sql), execute the contents of:
+### 1. Vercel build failing – missing Supabase env vars
 
-- `supabase/migrations/001_create_budgets.sql`
+**Problem:** Build failed with "Missing Supabase env vars."
 
-### 4. (Optional) Budget alert emails
+**Solution:** Added `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel → Settings → Environment Variables.
 
-To send email notifications when budgets hit 50%, 90%, or 100%, see [docs/BUDGET_ALERTS_EMAIL_SETUP.md](docs/BUDGET_ALERTS_EMAIL_SETUP.md).
+### 2. Friends unable to access deployed site – "Access required"
 
-### 5. Run the app
+**Problem:** Users saw "Access required" and couldn’t sign in.
 
-```bash
-npm run dev
-```
+**Solution:** Turned off Vercel Deployment Protection in Vercel → Settings → Deployment Protection, so the app is publicly accessible.
 
-Open [http://localhost:3000](http://localhost:3000).
+### 3. Sign-in redirects not working for deployed URL
+
+**Problem:** Auth redirects didn’t work on the Vercel domain.
+
+**Solution:** Updated Supabase Authentication → URL Configuration with the correct Site URL and Redirect URLs for the Vercel deployment.
+
+## Credits & Frameworks
+
+- [Next.js](https://nextjs.org/) – React framework
+- [Supabase](https://supabase.com/) – Auth and backend
+- [Recharts](https://recharts.org/) – Chart library
+- [Tailwind CSS](https://tailwindcss.com/) – CSS framework
+- [Vercel](https://vercel.com/) – Hosting
